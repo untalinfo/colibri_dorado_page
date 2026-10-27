@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-forest-950 text-sand-100 overflow-x-hidden font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-serif;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+/* Subtle botanical mist background */
+.bg-botanical-noise {
+  background-color: #0b130e;
+  background-image: radial-gradient(
+    circle at 50% 20%,
+    rgba(34, 47, 36, 0.45) 0%,
+    rgba(11, 19, 14, 0.95) 70%
+  );
+}
+
+.border-botanical {
+  border-color: rgba(45, 59, 46, 0.4);
+}
+
+.bg-botanical-card {
+  background-color: rgba(18, 27, 21, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
