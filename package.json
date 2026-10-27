@@ -1,0 +1,45 @@
+{
+  "name": "colibri-dorado",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "ping:google": "tsx scripts/ping-google.ts",
+    "generate:google": "tsx scripts/generate-video-google.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.30.0",
+    "@higgsfield/client": "^0.2.6",
+    "clsx": "^2.1.1",
+    "dotenv": "^18.0.8",
+    "framer-motion": "^14.7.1",
+    "lucide-react": "^0.475.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.0.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "jsdom": "^30.1.3",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^6.1.0",
+    "vitest": "^5.0.5"
+  }
+}
