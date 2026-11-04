@@ -14,7 +14,10 @@ export default function App() {
       <Navbar onOpenNotify={() => setIsNotifyOpen(true)} onOpenOrder={() => setIsOrderOpen(true)} />
 
       {/* Pages orchestrator */}
-      <LandingPage onOpenNotify={() => setIsNotifyOpen(true)} onOpenOrder={() => setIsOrderOpen(true)} />
+      <LandingPage
+        onOpenNotify={() => setIsNotifyOpen(true)}
+        onOpenOrder={() => setIsOrderOpen(true)}
+      />
 
       {/* Harvest Notification Modal (Subscribers) */}
       <HarvestNotificationModal isOpen={isNotifyOpen} onClose={() => setIsNotifyOpen(false)} />
