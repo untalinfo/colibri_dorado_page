@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import Hero from '../components/Hero';
 import TransitionBridge from '../components/TransitionBridge';
 import ManifestoSection from '../components/ManifestoSection';
