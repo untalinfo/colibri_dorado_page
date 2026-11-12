@@ -9,7 +9,7 @@ export default function App() {
   const [isOrderOpen, setIsOrderOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#070e0a] text-stone-100 flex flex-col selection:bg-honey-500 selection:text-forest-950">
+    <div className="min-h-screen text-stone-100 flex flex-col selection:bg-honey-500 selection:text-forest-950">
       {/* Top Navigation */}
       <Navbar onOpenNotify={() => setIsNotifyOpen(true)} onOpenOrder={() => setIsOrderOpen(true)} />
 

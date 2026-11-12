@@ -28,10 +28,7 @@ export default function Hero({ onOpenNotify, onOpenOrder }) {
       {/* Organic atmospheric depth with dual-buffer seamless video loop */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         <SeamlessVideoBackground src="/hero-forest-10s.mp4" />
-        <div className="absolute inset-0 bg-gradient-to-b from-forest-950/85 via-forest-950/65 to-forest-950" />
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-moss-800/30 rounded-full blur-[160px] pointer-events-none" />
-        <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-honey-700/10 rounded-full blur-[140px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-forest-950 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-forest-950/70" />
       </div>
 
       {/* Hero Central Content (Left-aligned Editorial Composition) */}
@@ -44,7 +41,7 @@ export default function Hero({ onOpenNotify, onOpenOrder }) {
         {/* Brand Headline with Fraunces Serif */}
         <motion.h1
           variants={itemVariants}
-          className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-serif font-normal tracking-tight text-sand-50 mb-5 leading-[1.02]"
+          className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-serif font-normal tracking-tight text-sand-50 mb-6 leading-[1.02]"
         >
           Colibrí <span className="italic font-normal text-honey-300">Dorado</span>
         </motion.h1>
@@ -52,7 +49,7 @@ export default function Hero({ onOpenNotify, onOpenOrder }) {
         {/* Tagline */}
         <motion.p
           variants={itemVariants}
-          className="text-xl sm:text-2xl md:text-3xl font-serif text-honey-300 mb-3 tracking-normal max-w-2xl font-light"
+          className="text-xl sm:text-2xl md:text-3xl font-serif text-honey-300 mb-4 tracking-normal max-w-2xl font-light"
         >
           Miel cruda de bosque andino. Cosecha limitada.
         </motion.p>
@@ -68,10 +65,10 @@ export default function Hero({ onOpenNotify, onOpenOrder }) {
         {/* Narrative Context */}
         <motion.p
           variants={itemVariants}
-          className="text-base sm:text-lg text-sand-300 max-w-xl font-normal leading-relaxed mb-10 font-sans"
+          className="text-base sm:text-lg text-sand-300 max-w-xl font-normal leading-relaxed mb-12 font-sans"
         >
-          Cosechada a mano por apicultor en la cordillera caucana. Sin someter a calor ni procesos
-          industriales, preservando viva la esencia botánica de las flores de niebla.
+          Cosechada a mano en el corazón de la zona cafetera caucana. Sin someter a calor ni procesos
+          industriales, preservando viva la esencia botánica de los bosques subandinos.
         </motion.p>
 
         {/* Actions */}
@@ -81,25 +78,23 @@ export default function Hero({ onOpenNotify, onOpenOrder }) {
         >
           {/* Primary CTA */}
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={onOpenOrder}
             className="px-8 py-4 rounded-full font-medium text-sm text-sand-50 bg-honey-700 hover:bg-honey-600 transition-colors flex items-center justify-center gap-2.5"
           >
             <span>Reservar Frasco de Cosecha</span>
-            <ArrowRight className="w-4 h-4 text-honey-300" />
+            <ArrowRight className="w-4 h-4 text-honey-300" strokeWidth={1.5} />
           </motion.button>
 
           {/* Secondary Action */}
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={onOpenNotify}
             className="px-7 py-4 rounded-full font-medium text-sm text-sand-300 hover:text-sand-100 bg-forest-900/90 hover:bg-forest-800 transition-colors flex items-center justify-center gap-2"
           >
-            <Bell className="w-4 h-4 text-honey-400" />
+            <Bell className="w-4 h-4 text-honey-400" strokeWidth={1.5} />
             <span>Avisarme de Próxima Cosecha</span>
           </motion.button>
         </motion.div>
@@ -110,36 +105,34 @@ export default function Hero({ onOpenNotify, onOpenOrder }) {
         </motion.p>
       </motion.div>
 
-      {/* Provenance Triad (Unboxed, Timeless Editorial Grid separated by space) */}
+      {/* Provenance Triad (Refined Editorial Composition) */}
       <motion.div
-        className="relative z-20 max-w-5xl mx-auto w-full px-4 sm:px-6 pt-20"
+        className="relative z-20 max-w-6xl mx-auto w-full px-6 sm:px-12 pb-12"
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 1, delay: 0.8 }}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 py-4 text-center sm:text-left">
-          <div className="group">
-            <p className="text-base font-serif font-medium text-sand-100 transition-colors group-hover:text-honey-300">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-12 py-4 border-t border-sand-500/10 pt-12">
+          <div className="flex flex-col">
+            <p className="text-base font-serif font-medium text-sand-100">
               100% Pura y Cruda
             </p>
-            <p className="text-sm text-sand-400 font-sans mt-1">
+            <p className="text-sm text-sand-400 font-sans mt-2">
               Sin pasteurizar ni filtrar en caliente
             </p>
           </div>
-
-          <div className="group">
-            <p className="text-base font-serif font-medium text-sand-100 transition-colors group-hover:text-honey-300">
+          <div className="flex flex-col">
+            <p className="text-base font-serif font-medium text-sand-100">
               1.750 msnm
             </p>
-            <p className="text-sm text-sand-400 font-sans mt-1">Bosque de niebla en Piendamó</p>
+            <p className="text-sm text-sand-400 font-sans mt-2">Bosque subandino en Piendamó</p>
           </div>
-
-          <div className="group">
-            <p className="text-base font-serif font-medium text-sand-100 transition-colors group-hover:text-honey-300">
+          <div className="flex flex-col">
+            <p className="text-base font-serif font-medium text-sand-100">
               Apicultura Respetuosa
             </p>
-            <p className="text-sm text-sand-400 font-sans mt-1">
+            <p className="text-sm text-sand-400 font-sans mt-2">
               Tiempo natural de maduración en panal
             </p>
           </div>
