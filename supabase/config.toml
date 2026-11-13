@@ -44,3 +44,8 @@ entrypoint = "./functions/create-order/index.js"
 
 [functions.submit-receipt]
 entrypoint = "./functions/submit-receipt/index.js"
+
+# Called by Telegram, which sends no Supabase JWT: authenticated by the secret_token header instead.
+[functions.telegram-webhook]
+entrypoint = "./functions/telegram-webhook/index.js"
+verify_jwt = false

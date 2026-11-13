@@ -1,4 +1,7 @@
 import { createSubmitReceiptHandler } from '../_shared/core/handlers/submitReceipt.js';
-import { buildDeps } from '../_shared/deps.js';
+import { buildDeps, buildNotifier, runInBackground } from '../_shared/deps.js';
 
-Deno.serve(createSubmitReceiptHandler(buildDeps()));
+const deps = buildDeps();
+Deno.serve(
+  createSubmitReceiptHandler({ ...deps, notifier: buildNotifier(deps.storage), runInBackground }),
+);

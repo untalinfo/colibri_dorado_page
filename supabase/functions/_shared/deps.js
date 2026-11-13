@@ -78,6 +78,15 @@ export function buildNotifier(storage) {
   });
 }
 
+export function loadWebhookConfig() {
+  return {
+    webhookSecret: Deno.env.get('TELEGRAM_WEBHOOK_SECRET')?.trim() ?? '',
+    ownerChatId: Deno.env.get('OWNER_CHAT_ID')?.trim() ?? '',
+  };
+}
+
+// Notifiers are NOT built here: only submit-receipt needs them (see its shell), so get-lot and
+// create-order never construct channels or log channel_disabled.
 export function buildDeps() {
   const supabase = createClient(required('SUPABASE_URL'), required('SUPABASE_SERVICE_ROLE_KEY'), {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -144,6 +153,20 @@ export function buildDeps() {
           .maybeSingle(),
       );
     },
+    // Conditional on pending_verification: a double tap or any other state changes nothing.
+    // `rejected` drops out of available_units, so the held stock is released.
+    async setDecision(ref, status) {
+      const row = must(
+        await supabase
+          .from('orders')
+          .update({ status, decided_at: new Date().toISOString() })
+          .eq('ref', ref)
+          .eq('status', 'pending_verification')
+          .select('ref, status')
+          .maybeSingle(),
+      );
+      return { changed: Boolean(row), order: row };
+    },
   };
 
   const storage = {
@@ -172,8 +195,6 @@ export function buildDeps() {
   return {
     db,
     storage,
-    notifier: buildNotifier(storage),
-    runInBackground,
     config: loadConfig(),
     resolveClientIp: loadClientIpResolver(),
   };
