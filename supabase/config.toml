@@ -1,0 +1,36 @@
+# Minimal local Supabase config. Business values (Nequi number, holder, stock)
+# live in the `lots` row or function secrets, never in this file.
+project_id = "colibri_dorado"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[storage]
+enabled = true
+file_size_limit = "5MiB"
+
+[auth]
+enabled = true
+
+[analytics]
+enabled = false
+
+[realtime]
+enabled = false
+
+[studio]
+enabled = false
+
+[local_smtp]
+enabled = false
