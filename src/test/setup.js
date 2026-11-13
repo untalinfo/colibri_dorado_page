@@ -6,5 +6,5 @@ class IntersectionObserverMock {
   disconnect() {}
 }
 
-window.IntersectionObserver = IntersectionObserverMock;
+// globalThis is `window` in jsdom and the plain global in node-env tests (supabase/**).
 globalThis.IntersectionObserver = IntersectionObserverMock;
