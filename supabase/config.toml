@@ -34,3 +34,13 @@ enabled = false
 
 [local_smtp]
 enabled = false
+
+# Entrypoints are .js (pure ES modules), so they must be declared explicitly.
+[functions.get-lot]
+entrypoint = "./functions/get-lot/index.js"
+
+[functions.create-order]
+entrypoint = "./functions/create-order/index.js"
+
+[functions.submit-receipt]
+entrypoint = "./functions/submit-receipt/index.js"

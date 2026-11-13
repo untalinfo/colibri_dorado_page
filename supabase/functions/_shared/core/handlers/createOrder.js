@@ -1,12 +1,15 @@
+import { BodyTooLarge, MAX_BODY_BYTES, readCappedText } from '../body.js';
 import { resolveClientIp as defaultResolveClientIp } from '../clientIp.js';
 import { corsHeaders, handlePreflight } from '../cors.js';
 import { mapRpcError } from '../errors.js';
 import { errorResponse, jsonResponse } from '../http.js';
 import { MAX_LENGTHS, validateOrderInput } from '../orderRules.js';
+import { buildPayment } from '../payment.js';
 import { generateReference } from '../reference.js';
 import { generateToken, hashToken } from '../tokens.js';
 
-export const MAX_BODY_BYTES = 16 * 1024;
+export { MAX_BODY_BYTES };
+
 const MAX_REF_ATTEMPTS = 3;
 // Upper bound used only to read slug/honeypot before the lot (and its real max) is loaded.
 const QTY_CEILING = 100;
@@ -17,42 +20,8 @@ const FAKE_UNIT_PRICE_COP = 50000;
 const FAKE_HOLD_MINUTES = 120;
 const FAKE_NEQUI_NUMBER = '3000000000';
 
-class BodyTooLarge extends Error {}
-
-// Streams the body and aborts as soon as the cap is exceeded.
-async function readCappedText(req, limit) {
-  const declared = Number(req.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > limit) throw new BodyTooLarge();
-  if (!req.body) return '';
-  const reader = req.body.getReader();
-  const chunks = [];
-  let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > limit) {
-      await reader.cancel();
-      throw new BodyTooLarge();
-    }
-    chunks.push(value);
-  }
-  const all = new Uint8Array(size);
-  let offset = 0;
-  for (const c of chunks) {
-    all.set(c, offset);
-    offset += c.byteLength;
-  }
-  return new TextDecoder().decode(all);
-}
-
 const isRefCollision = (error) =>
   error?.code === '23505' && /ref/i.test(`${error.message ?? ''} ${error.details ?? ''}`);
-
-const whatsappLink = (number) => {
-  const digits = String(number ?? '').replace(/\D/g, '');
-  return digits ? `https://wa.me/${digits.length === 10 ? `57${digits}` : digits}` : null;
-};
 
 // Best effort: real lot price/hold make the fake 201 indistinguishable; any failure uses defaults.
 async function honeypotLot(db, body) {
@@ -198,12 +167,7 @@ export function createCreateOrderHandler({
           total: order.total_cop,
           expiresAt,
           upload: { signedUrl: upload.signedUrl, path: upload.path },
-          payment: {
-            nequiNumber: lot.nequi_number,
-            holder: lot.nequi_holder,
-            ...(lot.nequi_qr_url ? { qrUrl: lot.nequi_qr_url } : {}),
-            whatsapp: whatsappLink(lot.nequi_number),
-          },
+          payment: buildPayment(lot),
         },
         201,
         { ...NO_STORE, ...cors },
