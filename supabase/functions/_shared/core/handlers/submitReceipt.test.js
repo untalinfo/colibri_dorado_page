@@ -38,10 +38,12 @@ const setup = (
       .mockResolvedValue({ signedUrl: 'https://up.example/s', path: 'order-uuid/receipt' }),
   };
   const notifier = { orderSubmitted: vi.fn().mockResolvedValue(undefined) };
+  const runInBackground = vi.fn();
   const handler = createSubmitReceiptHandler({
     db,
     storage,
     notifier,
+    runInBackground,
     config: { allowedOrigins: [ORIGIN], ...config },
   });
   const post = (body = { ref: 'CD-AAAAAA', orderToken: TOKEN, action: 'submit' }, raw) =>
@@ -52,7 +54,7 @@ const setup = (
         body: raw ?? JSON.stringify(body),
       }),
     );
-  return { db, storage, notifier, handler, post };
+  return { db, storage, notifier, runInBackground, handler, post };
 };
 
 describe('submitReceipt handler', () => {
@@ -209,6 +211,26 @@ describe('submitReceipt handler', () => {
       notifier.orderSubmitted.mockImplementation(impl);
       expect((await post()).status).toBe(200);
     }
+  });
+
+  it('does not await the notifier: a hung notifier cannot delay the response', async () => {
+    const { post, notifier, runInBackground } = setup();
+    notifier.orderSubmitted.mockReturnValue(new Promise(() => {}));
+    expect((await post()).status).toBe(200);
+    expect(runInBackground).toHaveBeenCalledTimes(1);
+    expect(runInBackground.mock.calls[0][0]).toBeInstanceOf(Promise);
+  });
+
+  it('a throwing runInBackground or notifier rejection never breaks the response', async () => {
+    const a = setup();
+    a.runInBackground.mockImplementation(() => {
+      throw new Error('x');
+    });
+    expect((await a.post()).status).toBe(200);
+    const b = setup();
+    b.notifier.orderSubmitted.mockRejectedValue(new Error('x'));
+    expect((await b.post()).status).toBe(200);
+    await expect(b.runInBackground.mock.calls[0][0]).resolves.toBeUndefined();
   });
 
   it('500 when storage stat or db throws', async () => {

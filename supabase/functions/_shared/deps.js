@@ -1,6 +1,9 @@
 // Deno-side wiring: real dependencies from env. Not unit-tested (I/O only); covered by the smoke run.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { resolveClientIp as defaultResolveClientIp } from './core/clientIp.js';
+import { createEmailChannel } from './core/notify/email.js';
+import { createNotifier } from './core/notify/notifier.js';
+import { createTelegramChannel, createTelegramClient } from './core/notify/telegram.js';
 
 const BUCKET = 'receipts';
 const LOT_COLUMNS =
@@ -37,6 +40,43 @@ const must = ({ data, error }) => {
   if (error) throw error;
   return data;
 };
+
+// Keeps the isolate alive after the response when the platform supports it; the promise is
+// already error-isolated by the handler, so plain fire-and-forget is a safe fallback.
+export function runInBackground(promise) {
+  globalThis.EdgeRuntime?.waitUntil?.(promise);
+}
+
+export const log = (event, fields) => console.warn(JSON.stringify({ event, ...fields }));
+
+export function telegramClientFromEnv() {
+  const token = Deno.env.get('TELEGRAM_BOT_TOKEN');
+  return token ? createTelegramClient({ token, fetch }) : null;
+}
+
+// A channel with missing config is disabled (logged), never a crash.
+export function buildNotifier(storage) {
+  const env = (name) => Deno.env.get(name)?.trim();
+  const client = telegramClientFromEnv();
+  const chatId = env('OWNER_CHAT_ID');
+  const telegram = client && chatId ? createTelegramChannel({ client, chatId }) : null;
+  if (!telegram) log('channel_disabled', { channel: 'telegram' });
+
+  const apiKey = env('RESEND_API_KEY');
+  const to = env('OWNER_EMAIL');
+  const email =
+    apiKey && to
+      ? createEmailChannel({ apiKey, to, from: env('RESEND_FROM') || undefined, fetch })
+      : null;
+  if (!email) log('channel_disabled', { channel: 'email' });
+
+  return createNotifier({
+    telegram,
+    email,
+    signReceiptUrl: (path, seconds) => storage.createSignedReadUrl(path, seconds),
+    log,
+  });
+}
 
 export function buildDeps() {
   const supabase = createClient(required('SUPABASE_URL'), required('SUPABASE_SERVICE_ROLE_KEY'), {
@@ -113,6 +153,10 @@ export function buildDeps() {
       );
       return { signedUrl: data.signedUrl, path: data.path ?? path };
     },
+    async createSignedReadUrl(path, seconds) {
+      const data = must(await supabase.storage.from(BUCKET).createSignedUrl(path, seconds));
+      return data.signedUrl;
+    },
     async statObject(path) {
       const slash = path.lastIndexOf('/');
       const dir = path.slice(0, slash);
@@ -125,8 +169,12 @@ export function buildDeps() {
     },
   };
 
-  // S2c: no-op. S3 swaps in Telegram/Resend.
-  const notifier = { orderSubmitted: async () => {} };
-
-  return { db, storage, notifier, config: loadConfig(), resolveClientIp: loadClientIpResolver() };
+  return {
+    db,
+    storage,
+    notifier: buildNotifier(storage),
+    runInBackground,
+    config: loadConfig(),
+    resolveClientIp: loadClientIpResolver(),
+  };
 }

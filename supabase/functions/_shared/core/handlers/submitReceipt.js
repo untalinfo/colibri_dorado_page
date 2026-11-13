@@ -16,7 +16,13 @@ const NO_STORE = { 'cache-control': 'no-store' };
 const receiptPath = (order) => `${order.id}/receipt`;
 const submittedBody = (order) => ({ order: { ref: order.ref, status: 'pending_verification' } });
 
-export function createSubmitReceiptHandler({ db, storage, notifier, config }) {
+export function createSubmitReceiptHandler({
+  db,
+  storage,
+  notifier,
+  runInBackground = () => {},
+  config,
+}) {
   return async (req) => {
     const preflight = handlePreflight(req, config.allowedOrigins);
     if (preflight) return preflight;
@@ -93,15 +99,18 @@ export function createSubmitReceiptHandler({ db, storage, notifier, config }) {
         return fail(409, 'INVALID_STATE', 'Invalid state');
       }
 
-      try {
-        await notifier.orderSubmitted({
+      // Never awaited: a slow/hung channel must not delay the response or undo the transition.
+      const notification = (async () =>
+        notifier.orderSubmitted({
           ...order,
           status: 'pending_verification',
           receipt_path: path,
           receipt_mime: mime,
-        });
+        }))().catch(() => {});
+      try {
+        runInBackground(notification);
       } catch {
-        // A notification failure must never undo or block the transition.
+        // The promise is already isolated; losing the keep-alive hook is non-fatal.
       }
       return ok(submittedBody(order));
     } catch {
