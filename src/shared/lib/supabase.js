@@ -64,7 +64,14 @@ export function createFunctionsClient(
     );
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new ApiError(data?.error?.code ?? 'REQUEST_FAILED', res.status, data?.error?.message);
+      const error = new ApiError(
+        data?.error?.code ?? 'REQUEST_FAILED',
+        res.status,
+        data?.error?.message,
+      );
+      // Only OUT_OF_STOCK carries a public stock count (never business data).
+      if (Number.isFinite(data?.available)) error.available = data.available;
+      throw error;
     }
     return data;
   };

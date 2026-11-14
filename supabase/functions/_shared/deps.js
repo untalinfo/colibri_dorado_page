@@ -4,6 +4,7 @@ import { resolveClientIp as defaultResolveClientIp } from './core/clientIp.js';
 import { createEmailChannel } from './core/notify/email.js';
 import { createNotifier } from './core/notify/notifier.js';
 import { createTelegramChannel, createTelegramClient } from './core/notify/telegram.js';
+import { toPublicUrl } from './core/publicUrl.js';
 
 const BUCKET = 'receipts';
 const LOT_COLUMNS =
@@ -169,16 +170,19 @@ export function buildDeps() {
     },
   };
 
+  const publicUrl = (url) =>
+    toPublicUrl(url, Deno.env.get('SUPABASE_URL'), Deno.env.get('PUBLIC_SUPABASE_URL'));
+
   const storage = {
     async createSignedUpload(path) {
       const data = must(
         await supabase.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true }),
       );
-      return { signedUrl: data.signedUrl, path: data.path ?? path };
+      return { signedUrl: publicUrl(data.signedUrl), path: data.path ?? path };
     },
     async createSignedReadUrl(path, seconds) {
       const data = must(await supabase.storage.from(BUCKET).createSignedUrl(path, seconds));
-      return data.signedUrl;
+      return publicUrl(data.signedUrl);
     },
     async statObject(path) {
       const slash = path.lastIndexOf('/');
