@@ -32,7 +32,11 @@ export default function App() {
       <HarvestNotificationModal isOpen={isNotifyOpen} onClose={() => setIsNotifyOpen(false)} />
 
       {/* Interactive Order Drawer */}
-      <OrderDrawer isOpen={isOrderOpen} onClose={() => setIsOrderOpen(false)} />
+      <OrderDrawer
+        isOpen={isOrderOpen}
+        onClose={() => setIsOrderOpen(false)}
+        repository={repository}
+      />
     </>
   );
 
