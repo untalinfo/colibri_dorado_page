@@ -11,22 +11,44 @@ const callbackUpdate = ({
   data = `c:${REF}`,
   fromId = Number(OWNER),
   chatId = Number(OWNER),
+  firstName = 'Carlos',
   message = { message_id: 7, chat: { id: chatId }, caption: 'Comprobante recibido', photo: [{}] },
 } = {}) => ({
   update_id: 1,
-  callback_query: { id: 'cb1', from: { id: fromId }, data, message },
+  callback_query: {
+    id: 'cb1',
+    from: { id: fromId, first_name: firstName },
+    data,
+    message,
+  },
 });
 
-const setup = ({ changed = true, secret = SECRET, owner = OWNER } = {}) => {
+const orderRow = (over = {}) => ({
+  id: 'o-1',
+  ref: REF,
+  status: 'confirmed',
+  customer_name: 'Ana',
+  customer_phone: '3001234567',
+  customer_address: 'Calle 1',
+  qty: 2,
+  total_cop: 90000,
+  decided_by: Number(OWNER),
+  decided_by_name: 'Carlos',
+  decided_at: NOW.toISOString(),
+  ...over,
+});
+
+const setup = ({ changed = true, secret = SECRET, adminIds = [OWNER], rows = [], order } = {}) => {
   const db = {
-    setDecision: vi.fn().mockResolvedValue({ changed, order: { ref: REF, status: 'confirmed' } }),
+    setDecision: vi.fn().mockResolvedValue({ changed, order: order ?? orderRow() }),
+    listAdminMessages: vi.fn().mockResolvedValue(rows),
   };
-  const telegram = { call: vi.fn().mockResolvedValue(undefined) };
+  const telegram = { call: vi.fn().mockResolvedValue({}) };
   const log = vi.fn();
   const handler = createTelegramWebhookHandler({
     db,
     telegram,
-    config: { webhookSecret: secret, ownerChatId: owner },
+    config: { webhookSecret: secret, adminIds },
     log,
     now: () => NOW,
   });
@@ -39,7 +61,8 @@ const setup = ({ changed = true, secret = SECRET, owner = OWNER } = {}) => {
       }),
     );
   const methods = () => telegram.call.mock.calls.map(([m]) => m);
-  return { db, telegram, log, post, methods, handler };
+  const edits = () => telegram.call.mock.calls.filter(([m]) => m.startsWith('edit'));
+  return { db, telegram, log, post, methods, edits, handler };
 };
 
 describe('telegramWebhook authentication', () => {
@@ -103,13 +126,16 @@ describe('telegramWebhook updates', () => {
     ['other sender', { fromId: 999 }],
     ['other chat', { chatId: 999 }],
     ['no message', { message: null }],
-  ])('non-owner (%s): neutral answer, no DB change, no edit', async (_n, over) => {
+  ])('non-admin (%s): neutral answer, no DB change, no edit (S5.5)', async (_n, over) => {
     const { post, db, methods, telegram } = setup();
     const res = await post(callbackUpdate(over));
     expect(res.status).toBe(200);
     expect(db.setDecision).not.toHaveBeenCalled();
     expect(methods()).toEqual(['answerCallbackQuery']);
-    expect(telegram.call.mock.calls[0][1].callback_query_id).toBe('cb1');
+    expect(telegram.call.mock.calls[0][1]).toMatchObject({
+      callback_query_id: 'cb1',
+      text: 'Acción no disponible',
+    });
   });
 
   it('compares ids as strings (string chat id works)', async () => {
@@ -118,10 +144,13 @@ describe('telegramWebhook updates', () => {
     expect(db.setDecision).toHaveBeenCalledOnce();
   });
 
-  it('does nothing for an unconfigured owner id', async () => {
-    const { post, db } = setup({ owner: '' });
-    await post(callbackUpdate({ fromId: '', chatId: '' }));
+  it('empty admin set: callbacks get "Acción no disponible" and the config error is logged', async () => {
+    const { post, db, telegram, log } = setup({ adminIds: [] });
+    const res = await post(callbackUpdate());
+    expect(res.status).toBe(200);
     expect(db.setDecision).not.toHaveBeenCalled();
+    expect(telegram.call.mock.calls[0][1].text).toBe('Acción no disponible');
+    expect(log).toHaveBeenCalledWith('admin_config_empty', {});
   });
 
   it.each([
@@ -143,11 +172,21 @@ describe('telegramWebhook updates', () => {
 });
 
 describe('telegramWebhook decisions', () => {
-  it('confirm: sets confirmed, edits caption (photo) without keyboard, answers', async () => {
-    const { post, db, telegram, methods } = setup();
+  it('records decided_by with a sanitized plain-text name (D5)', async () => {
+    const { post, db } = setup();
+    await post(callbackUpdate({ firstName: `  ${'Z'.repeat(40)}  ` }));
+    expect(db.setDecision).toHaveBeenCalledWith(REF, 'confirmed', OWNER, 'Z'.repeat(32));
+    const none = setup();
+    await none.post(callbackUpdate({ firstName: null, data: `r:${REF}` }));
+    expect(none.db.setDecision).toHaveBeenCalledWith(REF, 'rejected', OWNER, 'admin');
+  });
+
+  it('confirm on a media alert: editMessageCaption without buttons, then answers', async () => {
+    const { post, telegram, methods } = setup({
+      rows: [{ chat_id: 4242, message_id: 7, has_media: true }],
+    });
     const res = await post(callbackUpdate());
     expect(res.status).toBe(200);
-    expect(db.setDecision).toHaveBeenCalledWith(REF, 'confirmed');
     expect(methods()).toEqual(['editMessageCaption', 'answerCallbackQuery']);
     const edit = telegram.call.mock.calls[0][1];
     expect(edit).toMatchObject({
@@ -155,42 +194,122 @@ describe('telegramWebhook decisions', () => {
       message_id: 7,
       reply_markup: { inline_keyboard: [] },
     });
-    expect(edit.caption).toContain('Comprobante recibido');
-    expect(edit.caption).toContain('✅ Confirmado');
-    expect(edit.caption).toContain('2026-11-13');
+    expect(edit.caption).toContain('Comprobante recibido CD-ABC234');
+    expect(edit.caption).toContain('✅ Confirmado por Carlos · 10:30 13/11');
+    expect(edit.caption.length).toBeLessThan(1024);
     expect(edit.parse_mode).toBeUndefined();
+    expect(telegram.call.mock.calls[1][1].text).toBe('✅ Confirmado');
   });
 
-  it('reject on a text message uses editMessageText', async () => {
-    const { post, db, telegram, methods } = setup();
-    const message = {
-      message_id: 9,
-      chat: { id: Number(OWNER) },
-      text: 'resumen\nComprobante: https://x',
-    };
+  it('reject on a text alert uses editMessageText', async () => {
+    const message = { message_id: 9, chat: { id: Number(OWNER) }, text: 'resumen' };
+    const { post, methods, telegram } = setup({
+      order: orderRow({ status: 'rejected' }),
+      rows: [{ chat_id: 4242, message_id: 9, has_media: false }],
+    });
     await post(callbackUpdate({ data: `r:${REF}`, message }));
-    expect(db.setDecision).toHaveBeenCalledWith(REF, 'rejected');
     expect(methods()).toEqual(['editMessageText', 'answerCallbackQuery']);
-    const edit = telegram.call.mock.calls[0][1];
-    expect(edit.text).toContain('resumen');
-    expect(edit.text).toContain('❌ Rechazado');
-    expect(edit.reply_markup).toEqual({ inline_keyboard: [] });
+    expect(telegram.call.mock.calls[0][1].text).toContain('❌ Rechazado por Carlos');
   });
 
-  it('document messages are edited via caption', async () => {
-    const { post, methods } = setup();
+  it('syncs every admin copy with the decider, no buttons (S5.1)', async () => {
+    const rows = [
+      { chat_id: 4242, message_id: 7, has_media: true },
+      { chat_id: 5555, message_id: 21, has_media: false },
+    ];
+    const { post, edits, db } = setup({ adminIds: [OWNER, '5555'], rows });
+    await post(callbackUpdate());
+    expect(db.listAdminMessages).toHaveBeenCalledWith('o-1');
+    expect(edits().map(([m, p]) => [m, p.chat_id, p.message_id])).toEqual([
+      ['editMessageCaption', '4242', 7],
+      ['editMessageText', '5555', 21],
+    ]);
+    for (const [, p] of edits()) {
+      expect(p.reply_markup).toEqual({ inline_keyboard: [] });
+      expect(`${p.caption ?? p.text}`).toContain('Confirmado por Carlos');
+    }
+  });
+
+  it('later tap by another admin: "Ya procesado", own copy synced to the first decision (S5.2)', async () => {
+    const rows = [{ chat_id: 5555, message_id: 21, has_media: false }];
+    const message = { message_id: 21, chat: { id: 5555 }, text: 'x' };
+    const { post, telegram, methods, edits } = setup({
+      changed: false,
+      adminIds: [OWNER, '5555'],
+      rows,
+    });
+    await post(callbackUpdate({ fromId: 5555, chatId: 5555, data: `r:${REF}`, message }));
+    expect(methods()).toEqual(['editMessageText', 'answerCallbackQuery']);
+    expect(edits()).toHaveLength(1);
+    expect(telegram.call.mock.calls[0][1].text).toContain('✅ Confirmado por Carlos');
+    expect(telegram.call.mock.calls[1][1].text).toBe('Ya procesado');
+  });
+
+  it('a failing edit never undoes the decision nor blocks the others (S5.3)', async () => {
+    const rows = [
+      { chat_id: 4242, message_id: 7, has_media: true },
+      { chat_id: 5555, message_id: 21, has_media: false },
+      { chat_id: 6666, message_id: 30, has_media: false },
+    ];
+    const { post, telegram, log, edits } = setup({ adminIds: [OWNER, '5555', '6666'], rows });
+    telegram.call.mockImplementation(async (_m, p) => {
+      if (p.chat_id === '5555') throw new Error('telegram editMessageText http 403');
+      return {};
+    });
+    expect((await post(callbackUpdate())).status).toBe(200);
+    expect(edits()).toHaveLength(3);
+    expect(log).toHaveBeenCalledWith('decision_sync_failed', {
+      ref: REF,
+      chat_id: '5555',
+      error: 'Error',
+    });
+    expect(telegram.call.mock.calls.at(-1)[1].text).toBe('✅ Confirmado');
+  });
+
+  it('concurrent taps yield a single decision (S5.4)', async () => {
+    const { post, db, telegram } = setup({
+      rows: [{ chat_id: 4242, message_id: 7, has_media: true }],
+    });
+    db.setDecision
+      .mockResolvedValueOnce({ changed: true, order: orderRow() })
+      .mockResolvedValueOnce({ changed: false, order: orderRow() });
+    await Promise.all([post(callbackUpdate()), post(callbackUpdate({ data: `r:${REF}` }))]);
+    const answers = telegram.call.mock.calls
+      .filter(([m]) => m === 'answerCallbackQuery')
+      .map(([, p]) => p.text)
+      .sort();
+    expect(answers).toEqual(['Ya procesado', '✅ Confirmado']);
+    expect(db.listAdminMessages).toHaveBeenCalledOnce();
+  });
+
+  it('legacy order without rows edits only the tapped message (S5.7)', async () => {
     const message = { message_id: 3, chat: { id: Number(OWNER) }, caption: 'c', document: {} };
+    const { post, methods, telegram } = setup({ rows: [] });
     await post(callbackUpdate({ message }));
-    expect(methods()[0]).toBe('editMessageCaption');
+    expect(methods()).toEqual(['editMessageCaption', 'answerCallbackQuery']);
+    expect(telegram.call.mock.calls[0][1]).toMatchObject({ chat_id: OWNER, message_id: 3 });
   });
 
-  it('keeps a long text within the 4096 limit after appending the decision', async () => {
-    const { post, telegram } = setup();
-    const message = { message_id: 4, chat: { id: Number(OWNER) }, text: 'y'.repeat(4096) };
-    await post(callbackUpdate({ message }));
-    const { text } = telegram.call.mock.calls[0][1];
-    expect(text.length).toBeLessThanOrEqual(4096);
-    expect(text).toContain('✅ Confirmado');
+  it('still edits the tapped message when listing copies fails', async () => {
+    const { post, db, methods, log } = setup();
+    db.listAdminMessages.mockRejectedValue(new TypeError('db down'));
+    expect((await post(callbackUpdate())).status).toBe(200);
+    expect(methods()).toEqual(['editMessageCaption', 'answerCallbackQuery']);
+    expect(log).toHaveBeenCalledWith('admin_messages_failed', { ref: REF, error: 'TypeError' });
+  });
+
+  it('keeps huge captions and texts under the limits (S5.6)', async () => {
+    const big = orderRow({ customer_address: 'x'.repeat(6000) });
+    const rows = [
+      { chat_id: 4242, message_id: 7, has_media: true },
+      { chat_id: 5555, message_id: 8, has_media: false },
+    ];
+    const { post, edits } = setup({ adminIds: [OWNER, '5555'], rows, order: big });
+    await post(callbackUpdate());
+    const [cap, txt] = edits();
+    expect(cap[1].caption.length).toBeLessThan(1024);
+    expect(txt[1].text.length).toBeLessThan(4096);
+    expect(`${cap[1].caption}${txt[1].text}`).not.toMatch(/nequi/);
   });
 
   it('ignores a malformed ref without touching the DB', async () => {
@@ -201,35 +320,11 @@ describe('telegramWebhook decisions', () => {
     expect(methods()).toEqual(['answerCallbackQuery']);
   });
 
-  it('keeps a long caption within the 1024 limit after appending the decision', async () => {
-    const { post, telegram } = setup();
-    const message = {
-      message_id: 3,
-      chat: { id: Number(OWNER) },
-      caption: 'x'.repeat(1024),
-      photo: [{}],
-    };
-    await post(callbackUpdate({ message }));
-    const { caption } = telegram.call.mock.calls[0][1];
-    expect(caption.length).toBeLessThanOrEqual(1024);
-    expect(caption).toContain('✅ Confirmado');
-  });
-
-  it('double tap / other state: "Ya procesado", no edit', async () => {
-    const { post, methods, telegram } = setup({ changed: false });
-    const res = await post(callbackUpdate());
-    expect(res.status).toBe(200);
+  it('unknown ref (no order): "Ya procesado", no edits', async () => {
+    const { post, db, methods } = setup({ changed: false });
+    db.setDecision.mockResolvedValue({ changed: false, order: null });
+    await post(callbackUpdate());
     expect(methods()).toEqual(['answerCallbackQuery']);
-    expect(telegram.call.mock.calls[0][1].text).toBe('Ya procesado');
-  });
-
-  it('still answers when the edit fails', async () => {
-    const { post, telegram, methods } = setup();
-    telegram.call.mockImplementation(async (m) => {
-      if (m.startsWith('edit')) throw new Error('telegram editMessageCaption http 400');
-    });
-    expect((await post(callbackUpdate())).status).toBe(200);
-    expect(methods()).toEqual(['editMessageCaption', 'answerCallbackQuery']);
   });
 
   it('200 on internal DB errors, logging only ref and error name', async () => {
@@ -243,7 +338,7 @@ describe('telegramWebhook decisions', () => {
     expect(telegram.call.mock.calls.at(-1)[0]).toBe('answerCallbackQuery');
   });
 
-  it('200 even when Telegram answer calls fail', async () => {
+  it('200 even when every Telegram call fails', async () => {
     const { post, telegram } = setup();
     telegram.call.mockRejectedValue(new Error('down'));
     expect((await post(callbackUpdate())).status).toBe(200);

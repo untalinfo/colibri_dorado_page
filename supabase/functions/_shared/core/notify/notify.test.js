@@ -14,7 +14,11 @@ const order = {
   receipt_path: 'id/receipt',
   receipt_mime: 'image/png',
 };
-const ok = () => Promise.resolve(new Response('{"ok":true}', { status: 200 }));
+let nextId = 100;
+const ok = () =>
+  Promise.resolve(
+    new Response(JSON.stringify({ ok: true, result: { message_id: nextId++ } }), { status: 200 }),
+  );
 const bad = () => Promise.resolve(new Response('{}', { status: 500 }));
 const body = (fetch, n = 0) => JSON.parse(fetch.mock.calls[n][1].body);
 
@@ -28,8 +32,13 @@ describe('format', () => {
 });
 
 describe('telegram channel', () => {
+  const log = vi.fn();
   const make = (fetch) =>
-    createTelegramChannel({ client: createTelegramClient({ token: 'T0K', fetch }), chatId: '42' });
+    createTelegramChannel({
+      client: createTelegramClient({ token: 'T0K', fetch }),
+      chatIds: ['42'],
+      log,
+    });
 
   it('sendPhoto for images with summary and confirm/reject keyboard, no parse_mode', async () => {
     const fetch = vi.fn(ok);
@@ -65,12 +74,88 @@ describe('telegram channel', () => {
     expect(body(f2).reply_markup).toBeDefined();
   });
 
-  it('throws without leaking the token when everything fails', async () => {
-    const err = await make(vi.fn(bad))
-      .send(order, null)
-      .catch((e) => e);
-    expect(err).toBeInstanceOf(Error);
-    expect(String(err.message)).not.toContain('T0K');
+  it('resolves [] and logs (no token, no PII) when every send fails', async () => {
+    log.mockClear();
+    const res = await make(vi.fn(bad)).send(order, null);
+    expect(res).toEqual([]);
+    expect(log).toHaveBeenCalledWith('telegram_send_failed', {
+      ref: 'CD-ABC123',
+      chat_id: '42',
+      error: 'Error',
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toMatch(/T0K|Ana|3001234567/);
+  });
+
+  it('call returns the Telegram result and throws on ok:false', async () => {
+    const client = createTelegramClient({ token: 'T', fetch: vi.fn(ok) });
+    expect(await client.call('sendMessage', {})).toMatchObject({ message_id: expect.any(Number) });
+    const notOk = vi.fn(() => Promise.resolve(new Response('{"ok":false}', { status: 200 })));
+    await expect(
+      createTelegramClient({ token: 'T', fetch: notOk }).call('x', {}),
+    ).rejects.toThrow();
+  });
+
+  it('fans out to every chat and reports message ids and media flags (S4.1)', async () => {
+    const fetch = vi.fn(ok);
+    const ch = createTelegramChannel({
+      client: createTelegramClient({ token: 'T', fetch }),
+      chatIds: ['111', '222', '333'],
+      log,
+    });
+    const res = await ch.send(order, 'https://signed/x');
+    expect(res).toHaveLength(3);
+    expect(res.map((r) => r.chatId)).toEqual(['111', '222', '333']);
+    expect(res.every((r) => r.hasMedia === true && Number.isInteger(r.messageId))).toBe(true);
+    expect(fetch.mock.calls.map((_c, i) => body(fetch, i).chat_id).sort()).toEqual([
+      '111',
+      '222',
+      '333',
+    ]);
+  });
+
+  it('one failing chat does not block the others and gets no row (S4.2)', async () => {
+    log.mockClear();
+    const fetch = vi.fn((_u, init) => (JSON.parse(init.body).chat_id === '222' ? bad() : ok()));
+    const ch = createTelegramChannel({
+      client: createTelegramClient({ token: 'T', fetch }),
+      chatIds: ['111', '222', '333'],
+      log,
+    });
+    const res = await ch.send(order, null);
+    expect(res.map((r) => r.chatId)).toEqual(['111', '333']);
+    expect(res.every((r) => r.hasMedia === false)).toBe(true);
+    expect(log).toHaveBeenCalledWith(
+      'telegram_send_failed',
+      expect.objectContaining({ chat_id: '222' }),
+    );
+  });
+
+  it('media failing falls back to text for that chat and flags hasMedia=false', async () => {
+    const fetch = vi.fn().mockImplementationOnce(bad).mockImplementation(ok);
+    const res = await make(fetch).send(order, 'https://signed/x');
+    expect(res).toEqual([{ chatId: '42', messageId: expect.any(Number), hasMedia: false }]);
+  });
+
+  it('keeps the caption under 1024 for oversized customer fields (S4.3) and never leaks nequi', async () => {
+    const fetch = vi.fn(ok);
+    await make(fetch).send(
+      { ...order, customer_address: 'x'.repeat(3000), nequi_number: '3000000000' },
+      'https://signed/x',
+    );
+    const { caption } = body(fetch);
+    expect(caption.length).toBeLessThan(1024);
+    expect(JSON.stringify(body(fetch))).not.toMatch(/nequi|3000000000/);
+  });
+
+  it('with an empty chat set sends nothing (S4.5)', async () => {
+    const fetch = vi.fn(ok);
+    const ch = createTelegramChannel({
+      client: createTelegramClient({ token: 'T', fetch }),
+      chatIds: [],
+      log,
+    });
+    expect(await ch.send(order, null)).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('times out hung requests', async () => {
@@ -106,7 +191,9 @@ describe('email channel', () => {
 
 describe('notifier', () => {
   const setup = (over = {}) => {
-    const telegram = { send: vi.fn().mockResolvedValue() };
+    const results = [{ chatId: '42', messageId: 5, hasMedia: true }];
+    const telegram = { send: vi.fn().mockResolvedValue(results) };
+    const recordAlerts = vi.fn().mockResolvedValue();
     const email = { send: vi.fn().mockResolvedValue() };
     const signReceiptUrl = vi.fn().mockResolvedValue('https://signed/x');
     const log = vi.fn();
@@ -115,7 +202,9 @@ describe('notifier', () => {
       email,
       signReceiptUrl,
       log,
-      n: createNotifier({ telegram, email, signReceiptUrl, log, ...over }),
+      recordAlerts,
+      results,
+      n: createNotifier({ telegram, email, signReceiptUrl, recordAlerts, log, ...over }),
     };
   };
 
@@ -148,5 +237,30 @@ describe('notifier', () => {
     s.signReceiptUrl.mockRejectedValue(new Error('x'));
     await s.n.orderSubmitted(order);
     expect(s.telegram.send).toHaveBeenCalledWith(order, null);
+  });
+
+  it('records the sent alerts via recordAlerts keyed by order id (R4.2)', async () => {
+    const s = setup();
+    await s.n.orderSubmitted({ ...order, id: 'o-1' });
+    expect(s.recordAlerts).toHaveBeenCalledWith('o-1', s.results);
+  });
+
+  it('does not record when nothing was sent (S4.5)', async () => {
+    const s = setup();
+    s.telegram.send.mockResolvedValue([]);
+    await s.n.orderSubmitted({ ...order, id: 'o-1' });
+    expect(s.recordAlerts).not.toHaveBeenCalled();
+  });
+
+  it('a failing recordAlerts is logged and never blocks email (R4.6)', async () => {
+    const s = setup();
+    s.recordAlerts.mockRejectedValue(new TypeError('db secret'));
+    await s.n.orderSubmitted({ ...order, id: 'o-1' });
+    expect(s.email.send).toHaveBeenCalled();
+    expect(s.log).toHaveBeenCalledWith('notify_failed', {
+      channel: 'telegram',
+      ref: 'CD-ABC123',
+      error: 'TypeError',
+    });
   });
 });
