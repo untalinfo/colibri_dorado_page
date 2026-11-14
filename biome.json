@@ -9,6 +9,7 @@
     "ignoreUnknown": false,
     "includes": [
       "src/**/*",
+      "supabase/functions/**/*",
       "index.html",
       "vite.config.js",
       "tailwind.config.js",

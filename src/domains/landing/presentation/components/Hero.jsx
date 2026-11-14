@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Bell } from 'lucide-react';
 import SeamlessVideoBackground from '../../../../shared/components/SeamlessVideoBackground';
+import { useLot } from '../../../orders/presentation/hooks/useLot';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -22,7 +23,17 @@ const itemVariants = {
   },
 };
 
+// Only a confirmed backend answer produces copy; idle/loading/error render nothing.
+function availabilityCopy({ status, lot }) {
+  if (status !== 'ready' || !Number.isFinite(lot?.available)) return null;
+  if (lot.available <= 0) return 'Producción artesanal reducida: lote actual agotado';
+  const noun = lot.available === 1 ? 'frasco disponible' : 'frascos disponibles';
+  return `Producción artesanal reducida: ${lot.available} ${noun} del lote actual`;
+}
+
 export default function Hero({ onOpenNotify, onOpenOrder }) {
+  const availability = availabilityCopy(useLot());
+
   return (
     <section className="relative min-h-screen pt-36 pb-20 flex flex-col justify-between overflow-hidden bg-botanical-noise">
       {/* Organic atmospheric depth with dual-buffer seamless video loop */}
@@ -67,8 +78,8 @@ export default function Hero({ onOpenNotify, onOpenOrder }) {
           variants={itemVariants}
           className="text-base sm:text-lg text-sand-300 max-w-xl font-normal leading-relaxed mb-12 font-sans"
         >
-          Cosechada a mano en el corazón de la zona cafetera caucana. Sin someter a calor ni procesos
-          industriales, preservando viva la esencia botánica de los bosques subandinos.
+          Cosechada a mano en el corazón de la zona cafetera caucana. Sin someter a calor ni
+          procesos industriales, preservando viva la esencia botánica de los bosques subandinos.
         </motion.p>
 
         {/* Actions */}
@@ -100,9 +111,11 @@ export default function Hero({ onOpenNotify, onOpenOrder }) {
         </motion.div>
 
         {/* Batch Status note */}
-        <motion.p variants={itemVariants} className="mt-8 text-sm font-sans text-sand-400">
-          Producción artesanal reducida: 23 frascos disponibles del lote actual
-        </motion.p>
+        {availability && (
+          <motion.p variants={itemVariants} className="mt-8 text-sm font-sans text-sand-400">
+            {availability}
+          </motion.p>
+        )}
       </motion.div>
 
       {/* Provenance Triad (Refined Editorial Composition) */}
@@ -115,23 +128,17 @@ export default function Hero({ onOpenNotify, onOpenOrder }) {
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-12 py-4 border-t border-sand-500/10 pt-12">
           <div className="flex flex-col">
-            <p className="text-base font-serif font-medium text-sand-100">
-              100% Pura y Cruda
-            </p>
+            <p className="text-base font-serif font-medium text-sand-100">100% Pura y Cruda</p>
             <p className="text-sm text-sand-400 font-sans mt-2">
               Sin pasteurizar ni filtrar en caliente
             </p>
           </div>
           <div className="flex flex-col">
-            <p className="text-base font-serif font-medium text-sand-100">
-              1.750 msnm
-            </p>
+            <p className="text-base font-serif font-medium text-sand-100">1.750 msnm</p>
             <p className="text-sm text-sand-400 font-sans mt-2">Bosque subandino en Piendamó</p>
           </div>
           <div className="flex flex-col">
-            <p className="text-base font-serif font-medium text-sand-100">
-              Apicultura Respetuosa
-            </p>
+            <p className="text-base font-serif font-medium text-sand-100">Apicultura Respetuosa</p>
             <p className="text-sm text-sand-400 font-sans mt-2">
               Tiempo natural de maduración en panal
             </p>

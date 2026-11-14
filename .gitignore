@@ -32,3 +32,6 @@ dist-ssr
 # AI Projects
 .atl
 .openclaw
+# Tracked templates (placeholders only)
+!.env.example
+!**/.env.example
