@@ -1,3 +1,4 @@
+import { createAdminCommands } from '../_shared/core/admin/commands.js';
 import { createTelegramWebhookHandler } from '../_shared/core/handlers/telegramWebhook.js';
 import { buildDeps, loadWebhookConfig, log, telegramClientFromEnv } from '../_shared/deps.js';
 
@@ -6,4 +7,7 @@ const { db } = buildDeps();
 const telegram = telegramClientFromEnv() ?? {
   call: () => Promise.reject(new Error('telegram not configured')),
 };
-Deno.serve(createTelegramWebhookHandler({ db, telegram, config: loadWebhookConfig(), log }));
+const commands = createAdminCommands({ db });
+Deno.serve(
+  createTelegramWebhookHandler({ db, telegram, commands, config: loadWebhookConfig(), log }),
+);
