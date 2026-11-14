@@ -1,6 +1,11 @@
 -- Rollback for the Telegram admin bot. Run sections in reverse order (S4 -> S1).
 -- Redeploy the previous functions first (see README).
 
+-- S4
+drop function if exists public.order_summary(int);
+drop function if exists public.change_lot(text, text, int, bigint, bigint);
+drop table if exists public.lot_changes;
+
 -- S3
 drop function if exists public.adjust_stock(text, int, text, text, bigint, bigint);
 drop table if exists public.stock_adjustments;
