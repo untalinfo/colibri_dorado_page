@@ -2,7 +2,7 @@ const RECEIPT_URL_TTL_SECONDS = 300;
 
 // Channels are optional (null = disabled) and isolated: one failing never blocks the other.
 // Logs carry the ref and the error class only, never messages (may embed secrets or PII).
-export function createNotifier({ telegram, email, signReceiptUrl, log = () => {} }) {
+export function createNotifier({ telegram, email, signReceiptUrl, recordAlerts, log = () => {} }) {
   const fail = (channel, ref) => (err) =>
     log('notify_failed', { channel, ref, error: err?.name ?? 'Error' });
 
@@ -19,7 +19,8 @@ export function createNotifier({ telegram, email, signReceiptUrl, log = () => {}
             } catch (err) {
               fail('receipt_sign', order.ref)(err);
             }
-            await telegram.send(order, url);
+            const sent = await telegram.send(order, url);
+            if (Array.isArray(sent) && sent.length > 0) await recordAlerts?.(order.id, sent);
           }).catch(fail('telegram', order.ref)),
         );
       }

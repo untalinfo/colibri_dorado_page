@@ -1,5 +1,6 @@
 // Deno-side wiring: real dependencies from env. Not unit-tested (I/O only); covered by the smoke run.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { parseAdminIds } from './core/admin/admins.js';
 import { resolveClientIp as defaultResolveClientIp } from './core/clientIp.js';
 import { createEmailChannel } from './core/notify/email.js';
 import { createNotifier } from './core/notify/notifier.js';
@@ -7,6 +8,8 @@ import { createTelegramChannel, createTelegramClient } from './core/notify/teleg
 import { toPublicUrl } from './core/publicUrl.js';
 
 const BUCKET = 'receipts';
+const ORDER_DECISION_COLUMNS =
+  'id, ref, status, qty, total_cop, customer_name, customer_phone, customer_address, decided_at, decided_by, decided_by_name';
 const LOT_COLUMNS =
   'id, slug, name, price_cop, max_per_order, hold_minutes, active, nequi_number, nequi_holder, nequi_qr_url';
 
@@ -55,12 +58,18 @@ export function telegramClientFromEnv() {
   return token ? createTelegramClient({ token, fetch }) : null;
 }
 
+// ADMIN_CHAT_IDS, with OWNER_CHAT_ID as the single-admin fallback only while it is unset/blank.
+export function loadAdminIds() {
+  return parseAdminIds(Deno.env.get('ADMIN_CHAT_IDS'), Deno.env.get('OWNER_CHAT_ID'));
+}
+
 // A channel with missing config is disabled (logged), never a crash.
-export function buildNotifier(storage) {
+export function buildNotifier(storage, db) {
   const env = (name) => Deno.env.get(name)?.trim();
   const client = telegramClientFromEnv();
-  const chatId = env('OWNER_CHAT_ID');
-  const telegram = client && chatId ? createTelegramChannel({ client, chatId }) : null;
+  const chatIds = loadAdminIds();
+  const telegram =
+    client && chatIds.length > 0 ? createTelegramChannel({ client, chatIds, log }) : null;
   if (!telegram) log('channel_disabled', { channel: 'telegram' });
 
   const apiKey = env('RESEND_API_KEY');
@@ -75,6 +84,13 @@ export function buildNotifier(storage) {
     telegram,
     email,
     signReceiptUrl: (path, seconds) => storage.createSignedReadUrl(path, seconds),
+    recordAlerts: (orderId, sent) =>
+      db.saveAdminMessages(
+        orderId,
+        sent
+          .filter((s) => s.messageId != null)
+          .map((s) => ({ chat_id: s.chatId, message_id: s.messageId, has_media: s.hasMedia })),
+      ),
     log,
   });
 }
@@ -82,7 +98,7 @@ export function buildNotifier(storage) {
 export function loadWebhookConfig() {
   return {
     webhookSecret: Deno.env.get('TELEGRAM_WEBHOOK_SECRET')?.trim() ?? '',
-    ownerChatId: Deno.env.get('OWNER_CHAT_ID')?.trim() ?? '',
+    adminIds: loadAdminIds(),
   };
 }
 
@@ -155,18 +171,45 @@ export function buildDeps() {
       );
     },
     // Conditional on pending_verification: a double tap or any other state changes nothing.
-    // `rejected` drops out of available_units, so the held stock is released.
-    async setDecision(ref, status) {
+    // `rejected` drops out of available_units, so the held stock is released. On a lost race the
+    // current order is returned so the tapped copy can be synced to the winner's decision.
+    async setDecision(ref, status, adminId, adminName) {
       const row = must(
         await supabase
           .from('orders')
-          .update({ status, decided_at: new Date().toISOString() })
+          .update({
+            status,
+            decided_at: new Date().toISOString(),
+            decided_by: adminId,
+            decided_by_name: adminName,
+          })
           .eq('ref', ref)
           .eq('status', 'pending_verification')
-          .select('ref, status')
+          .select(ORDER_DECISION_COLUMNS)
           .maybeSingle(),
       );
-      return { changed: Boolean(row), order: row };
+      if (row) return { changed: true, order: row };
+      const order = must(
+        await supabase.from('orders').select(ORDER_DECISION_COLUMNS).eq('ref', ref).maybeSingle(),
+      );
+      return { changed: false, order };
+    },
+    async saveAdminMessages(orderId, rows) {
+      if (rows.length === 0) return;
+      must(
+        await supabase.from('order_admin_messages').upsert(
+          rows.map((r) => ({ order_id: orderId, ...r })),
+          { onConflict: 'order_id,chat_id' },
+        ),
+      );
+    },
+    async listAdminMessages(orderId) {
+      return must(
+        await supabase
+          .from('order_admin_messages')
+          .select('chat_id, message_id, has_media')
+          .eq('order_id', orderId),
+      );
     },
   };
 

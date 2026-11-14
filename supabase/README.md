@@ -65,7 +65,8 @@ Copy `supabase/functions/.env.example` and fill it in; deploy with
 | `CLIENT_IP_HEADER` | pin the platform client-IP header |
 | `TELEGRAM_BOT_TOKEN` | bot token from @BotFather |
 | `TELEGRAM_WEBHOOK_SECRET` | random string, also used as `secret_token` below |
-| `OWNER_CHAT_ID` | owner's numeric Telegram id |
+| `ADMIN_CHAT_IDS` | comma-separated numeric private chat ids of the admins; each gets the order alert and can confirm/reject. Set but without any valid id = fail closed |
+| `OWNER_CHAT_ID` | deprecated single-admin fallback, used only when `ADMIN_CHAT_IDS` is unset/blank |
 | `RESEND_API_KEY`, `OWNER_EMAIL`, `RESEND_FROM` | owner email notification |
 
 ### Register the Telegram webhook
@@ -111,8 +112,8 @@ every function call fails CORS.
 - [ ] Service role key is injected by Supabase; never ship it to the client.
 - [ ] `supabase db push` and `supabase functions deploy` (get-lot, create-order, submit-receipt, telegram-webhook).
 - [ ] Lot row created with the upsert above (real Nequi number, holder/QR, price, stock), never in git; `get-lot` returns it.
-- [ ] Telegram bot, `OWNER_CHAT_ID`, webhook secret, `setWebhook` done; `getWebhookInfo` shows the URL and no `last_error_message`.
-- [ ] `OWNER_CHAT_ID` is the owner's personal user id (private chat with the bot), not a group id: taps are only accepted when both the tapping user and the chat match it.
+- [ ] Telegram bot, `ADMIN_CHAT_IDS`, webhook secret, `setWebhook` done; `getWebhookInfo` shows the URL and no `last_error_message`.
+- [ ] Every `ADMIN_CHAT_IDS` entry is an admin's personal user id (private chat with the bot, who has pressed Start), not a group id: taps are only accepted when both the tapping user and the chat match one of them.
 - [ ] `RESEND_FROM` on a verified domain if emailing anyone other than the Resend account owner.
 - [ ] GitHub keep-alive secrets/variable set; run the workflow once via `workflow_dispatch`. GitHub disables scheduled workflows after 60 days without repo activity, so re-enable it if that happens.
 - [ ] Last step: set the three `VITE_*` vars with `VITE_RESERVATIONS_ENABLED=true` in the host build env and redeploy the site.
@@ -120,3 +121,14 @@ every function call fails CORS.
 Known: if the client times out after the server already accepted a receipt, the
 owner may get a duplicate Telegram message. Harmless: the decision webhook is
 idempotent ("Ya procesado").
+
+## Telegram admin bot: S1 (multi-admin alerts)
+
+Deploy order: apply migration `20261114000001_admin_bot_s1.sql`, set `ADMIN_CHAT_IDS`
+(keep `OWNER_CHAT_ID` until released), then deploy `telegram-webhook` and
+`submit-receipt`. Publish the updated privacy policy before or with the functions.
+Each admin gets the alert; a decision edits every admin's copy ("Confirmado por
+{name}") and stores `orders.decided_by`.
+
+Rollback: redeploy the previous functions, then run the S1 section of
+`supabase/rollback/admin_bot.down.sql` (sections are run in reverse, S4 to S1).
