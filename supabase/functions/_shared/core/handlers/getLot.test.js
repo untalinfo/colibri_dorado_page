@@ -88,6 +88,16 @@ describe('getLot handler', () => {
     expect((await call()).status).toBe(404);
   });
 
+  it('inactive (paused) lot answers 404 LOT_UNAVAILABLE and exposes no lot data (R3.8)', async () => {
+    const { call, db } = setup();
+    db.getLotWithAvailability.mockResolvedValueOnce({ ...lotRow, active: false });
+    const res = await call();
+    const body = await res.json();
+    expect(res.status).toBe(404);
+    expect(body.error.code).toBe('LOT_UNAVAILABLE');
+    expect(body.lot).toBeUndefined();
+  });
+
   it('405 for non-GET, 204 preflight, 500 when db throws', async () => {
     const { call, db } = setup();
     expect((await call(undefined, { method: 'POST' })).status).toBe(405);

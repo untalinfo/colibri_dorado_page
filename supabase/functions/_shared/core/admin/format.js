@@ -50,6 +50,36 @@ export function formatAdjustment({ code, delta }, result) {
   return result.replayed ? `Ya aplicado antes. ${line}` : line;
 }
 
+const failure = (result) =>
+  result.error === 'LOT_NOT_FOUND'
+    ? 'Lote no encontrado. Usa /lotes para ver los códigos.'
+    : 'No se pudo aplicar, reintenta.';
+const replayed = (result, line) => (result.replayed ? `Ya aplicado antes. ${line}` : line);
+
+export function formatPriceChange({ code }, result) {
+  if (result.error) return failure(result);
+  if (!result.changed) return `Precio ${code} sin cambios: ${formatCop(result.new)}`;
+  const line = `Precio ${code}: ${formatCop(result.old)} → ${formatCop(result.new)}`;
+  return replayed(result, `${line}\nLos pedidos existentes conservan su precio.`);
+}
+
+// result.new is 1 when the lot is active, 0 when paused.
+export function formatActiveChange({ code }, result) {
+  if (result.error) return failure(result);
+  const state = result.new === 1 ? 'activo' : 'pausado';
+  if (!result.changed) return `Lote ${code} ya estaba ${state}.`;
+  return replayed(result, `Lote ${code} ${state}.`);
+}
+
+export function formatSummary({ days }, rows) {
+  const lines = [days === 1 ? 'Resumen del último día' : `Resumen de los últimos ${days} días`];
+  for (const r of rows)
+    lines.push(`${STATUS[r.status] ?? r.status}: ${r.orders} pedidos · ${r.units} uds`);
+  const revenue = rows.reduce((sum, r) => sum + r.revenue_cop, 0);
+  lines.push(`Ingresos confirmados: ${formatCop(revenue)}`);
+  return lines.join('\n');
+}
+
 export function formatLots(rows) {
   if (rows.length === 0) return 'Sin lotes';
   const lines = rows

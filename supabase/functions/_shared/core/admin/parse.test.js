@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { REASON_MAX } from './constants.js';
-import { cleanReason, parseCode, parseCommand, parseInteger } from './parse.js';
+import { cleanReason, parseCode, parseCommand, parseInteger, USAGE } from './parse.js';
 
 describe('parseCommand', () => {
   it('lowercases the command and strips @botname (S1.7)', () => {
@@ -95,5 +95,58 @@ describe('stock commands', () => {
         usage: '/corregir <código> <±n> [motivo]',
       });
     }
+  });
+
+  describe('lot changes', () => {
+    it('/precio takes a code and an integer price within bounds', () => {
+      expect(parseCommand('/precio M500 42000')).toEqual({
+        name: 'precio',
+        args: { code: 'm500', price: 42000 },
+      });
+      expect(parseCommand('/precio m500 1000').args.price).toBe(1000);
+      expect(parseCommand('/precio m500 1000000').args.price).toBe(1000000);
+    });
+
+    it('/precio accepts Colombian dot thousands separators', () => {
+      expect(parseCommand('/precio m500 38.000').args.price).toBe(38000);
+      expect(parseCommand('/precio m500 1.000.000').args.price).toBe(1000000);
+    });
+
+    it.each([
+      '/precio',
+      '/precio m500',
+      '/precio m500 0',
+      '/precio m500 -5',
+      '/precio m500 12.5',
+      '/precio m500 38.00',
+      '/precio m500 38,000',
+      '/precio m500 abc',
+      '/precio m500 999',
+      '/precio m500 1000001',
+      '/precio m500 42000 extra',
+      '/precio !! 42000',
+    ])('%s answers with usage', (text) => {
+      expect(parseCommand(text)).toEqual({ name: 'precio', usage: '/precio <código> <cop>' });
+    });
+
+    it('/pausar and /reanudar take exactly one code', () => {
+      expect(parseCommand('/pausar M500')).toEqual({ name: 'pausar', args: { code: 'm500' } });
+      expect(parseCommand('/reanudar m500').args).toEqual({ code: 'm500' });
+      expect(parseCommand('/pausar')).toEqual({ name: 'pausar', usage: '/pausar <código>' });
+      expect(parseCommand('/reanudar a b').usage).toBe('/reanudar <código>');
+    });
+
+    it('/resumen defaults to 7 days and accepts 1..31', () => {
+      expect(parseCommand('/resumen').args).toEqual({ days: 7 });
+      expect(parseCommand('/resumen 1').args).toEqual({ days: 1 });
+      expect(parseCommand('/resumen 31').args).toEqual({ days: 31 });
+      for (const bad of ['0', '32', '-1', '2.5', 'x', '7 8']) {
+        expect(parseCommand(`/resumen ${bad}`).usage).toBe('/resumen [días]');
+      }
+    });
+
+    it('/ayuda lists the new commands', () => {
+      expect(USAGE).toEqual(expect.arrayContaining(['/pausar <código>', '/resumen [días]']));
+    });
   });
 });

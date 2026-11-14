@@ -1,5 +1,14 @@
 import { LIST_CAP } from './constants.js';
-import { formatAdjustment, formatHelp, formatLots, formatOrder, formatPending } from './format.js';
+import {
+  formatActiveChange,
+  formatAdjustment,
+  formatHelp,
+  formatLots,
+  formatOrder,
+  formatPending,
+  formatPriceChange,
+  formatSummary,
+} from './format.js';
 
 const HINT = 'Comando no reconocido. Usa /ayuda para ver los comandos.';
 
@@ -9,6 +18,13 @@ export function createAdminCommands({ db, now = () => new Date() }) {
     (kind) =>
     async (args, { adminId, updateId }) =>
       formatAdjustment(args, await db.adjustStock({ ...args, kind, adminId, updateId }));
+  const setActive =
+    (value) =>
+    async (args, { adminId, updateId }) =>
+      formatActiveChange(
+        args,
+        await db.changeLot({ ...args, kind: 'active', value, adminId, updateId }),
+      );
   const handlers = {
     ayuda: async () => formatHelp(),
     lotes: async () => formatLots(await db.lotOverview()),
@@ -19,6 +35,14 @@ export function createAdminCommands({ db, now = () => new Date() }) {
     },
     agregar: adjust('add'),
     corregir: adjust('correct'),
+    precio: async ({ code, price }, { adminId, updateId }) =>
+      formatPriceChange(
+        { code },
+        await db.changeLot({ code, kind: 'price', value: price, adminId, updateId }),
+      ),
+    pausar: setActive(0),
+    reanudar: setActive(1),
+    resumen: async (args) => formatSummary(args, await db.orderSummary(args.days)),
   };
   return {
     async run(cmd, ctx = {}) {

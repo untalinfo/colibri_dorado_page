@@ -189,3 +189,32 @@ Add both to the per-admin menu by appending these entries to the `setMyCommands`
 
 Rollback: redeploy the previous functions, re-run `setMyCommands` without the two entries,
 then run the S3 section of `supabase/rollback/admin_bot.down.sql`.
+
+## Telegram admin bot: S4 (lot changes and summary)
+
+Deploy order: apply migration `20261114000004_admin_bot_s4.sql`, then deploy
+`telegram-webhook`.
+
+Commands (admin private chat only, plain text, audited and idempotent per update):
+
+- `/precio <código> <cop>`: new price, `38000` or `38.000` (1.000 to 1.000.000 COP, no
+  decimals). Existing orders keep the price they were created with.
+- `/pausar <código>` / `/reanudar <código>`: hide or reopen a lot. A paused lot is
+  rejected by the public `get-lot` and reserve flow (`LOT_UNAVAILABLE`); stock already
+  held by open orders is kept.
+- `/resumen [días]`: orders, units and confirmed revenue per status, default 7 days (1 to 31).
+
+Append these entries to the per-admin `setMyCommands` list:
+
+```json
+{"command": "precio", "description": "Cambiar precio: /precio m500 42000"},
+{"command": "pausar", "description": "Pausar lote: /pausar m500"},
+{"command": "reanudar", "description": "Reanudar lote: /reanudar m500"},
+{"command": "resumen", "description": "Resumen de ventas: /resumen 7"}
+```
+
+Follow-up (GL4.5): once `ADMIN_CHAT_IDS` is set in production and one release has run
+cleanly, remove the `OWNER_CHAT_ID` fallback and delete that secret.
+
+Rollback: redeploy the previous functions, re-run `setMyCommands` without the four entries,
+then run the S4 section of `supabase/rollback/admin_bot.down.sql` (first, before S3).
