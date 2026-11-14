@@ -178,7 +178,9 @@ export default function OrderFormStep({ lot, state, message, onSubmit }) {
           <label htmlFor={ids.consent} className="text-xs text-sand-300 leading-relaxed">
             Acepto el tratamiento de mis datos personales según la Ley 1581 de 2012 y la{' '}
             <a
-              href="#politica-de-privacidad"
+              href="/politica-de-privacidad.html"
+              target="_blank"
+              rel="noopener noreferrer"
               className="underline text-honey-300 hover:text-honey-200"
             >
               política de privacidad

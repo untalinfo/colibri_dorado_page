@@ -41,6 +41,7 @@ export default function ClosingSection({ onOpenOrder }) {
           <a href="#" className="hover:text-honey-300 transition-colors">Origen</a>
           <a href="#" className="hover:text-honey-300 transition-colors">Pureza</a>
           <a href="#" className="hover:text-honey-300 transition-colors">Contacto</a>
+          <a href="/politica-de-privacidad.html" className="hover:text-honey-300 transition-colors">Privacidad</a>
         </div>
         <div className="text-center sm:text-right">
           © 2026 Finca Los Colibríes. <br/>

@@ -82,6 +82,15 @@ describe('OrderDrawer', () => {
     expect(document.querySelector('input[name="website"], input#website')).toBeNull();
   });
 
+  it('links the consent to the privacy policy page in a new tab', async () => {
+    setup();
+    await screen.findByLabelText(/nombre completo/i);
+    const link = screen.getByRole('link', { name: /política de privacidad/i });
+    expect(link).toHaveAttribute('href', '/politica-de-privacidad.html');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
+
   it('shows per-field Spanish errors and does not call the API', async () => {
     const { repository } = setup();
     await screen.findByLabelText(/nombre completo/i);
