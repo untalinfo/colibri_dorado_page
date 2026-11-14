@@ -10,6 +10,8 @@ import { toPublicUrl } from './core/publicUrl.js';
 const BUCKET = 'receipts';
 const ORDER_DECISION_COLUMNS =
   'id, ref, status, qty, total_cop, customer_name, customer_phone, customer_address, decided_at, decided_by, decided_by_name';
+const ORDER_VIEW_COLUMNS =
+  'ref, status, qty, total_cop, customer_name, customer_phone, customer_address, created_at, decided_at, decided_by_name, lots(code)';
 const LOT_COLUMNS =
   'id, slug, name, price_cop, max_per_order, hold_minutes, active, nequi_number, nequi_holder, nequi_qr_url';
 
@@ -193,6 +195,25 @@ export function buildDeps() {
         await supabase.from('orders').select(ORDER_DECISION_COLUMNS).eq('ref', ref).maybeSingle(),
       );
       return { changed: false, order };
+    },
+    // Read-only admin queries: explicit columns, nequi_* is never selected.
+    async lotOverview() {
+      return must(await supabase.rpc('lot_overview'));
+    },
+    async listPending(limit) {
+      return must(
+        await supabase
+          .from('orders')
+          .select(ORDER_VIEW_COLUMNS)
+          .eq('status', 'pending_verification')
+          .order('created_at', { ascending: false })
+          .limit(limit),
+      );
+    },
+    async getOrder(ref) {
+      return must(
+        await supabase.from('orders').select(ORDER_VIEW_COLUMNS).eq('ref', ref).maybeSingle(),
+      );
     },
     async saveAdminMessages(orderId, rows) {
       if (rows.length === 0) return;
