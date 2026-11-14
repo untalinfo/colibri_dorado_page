@@ -47,7 +47,14 @@ const lot = (i) => ({
 describe('formatters', () => {
   it('/ayuda lists every command with usage', () => {
     const text = formatHelp();
-    for (const c of ['/ayuda', '/lotes', '/pendientes', '/pedido <ref>']) {
+    for (const c of [
+      '/ayuda',
+      '/lotes',
+      '/pendientes',
+      '/pedido <ref>',
+      '/agregar <código> <n>',
+      '/corregir <código> <±n> [motivo]',
+    ]) {
       expect(text).toContain(c);
     }
   });
