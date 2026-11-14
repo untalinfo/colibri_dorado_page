@@ -8,19 +8,32 @@ Local stack: `pnpm exec supabase start`, `pnpm exec supabase db reset`, tests wi
 The Nequi number and account holder are private configuration. They are NOT
 committed, NOT in `VITE_*` env, NOT returned by `get-lot`. The seed ships only
 placeholders. Set the real values directly in the target database (SQL editor
-or `psql`), never in a migration or seed:
+or `psql`), never in a migration or seed.
+
+`seed.sql` only runs on a local `db reset`; `supabase db push` does NOT seed.
+A fresh production database has no lot row, so `get-lot` answers
+`LOT_UNAVAILABLE` until you create it. Run this upsert once in production (safe
+to re-run; it also updates an existing row):
 
 ```sql
-update lots
-set nequi_number = '<real number>',
-    nequi_holder = '<account holder>',
-    nequi_qr_url = null -- optional
-where slug = 'miel-colibri-500g';
+insert into lots (slug, name, price_cop, stock, max_per_order, hold_minutes,
+                  nequi_number, nequi_holder, nequi_qr_url, active)
+values ('miel-colibri-500g', 'Miel Colibri Dorado 500g', <price_cop>, <stock>, 6, 120,
+        '<real number>', '<account holder>', null, true)
+on conflict (slug) do update
+set name = excluded.name,
+    price_cop = excluded.price_cop,
+    stock = excluded.stock,
+    max_per_order = excluded.max_per_order,
+    hold_minutes = excluded.hold_minutes,
+    nequi_number = excluded.nequi_number,
+    nequi_holder = excluded.nequi_holder,
+    nequi_qr_url = excluded.nequi_qr_url,
+    active = excluded.active;
 ```
 
-Go-live checklist (business inputs): real Nequi number and holder (or QR), real
-`stock`, and `price_cop`. Adjust stock with
-`update lots set stock = <n> where slug = '...'`.
+The slug must match `LOT_SLUG` (keep-alive) and the slug the site requests.
+Later stock changes: `update lots set stock = <n> where slug = '...'`.
 
 ## Access model
 
@@ -74,17 +87,35 @@ the GitHub repo: secrets `SUPABASE_FUNCTIONS_URL`
 (`https://<project-ref>.supabase.co/functions/v1`) and `SUPABASE_ANON_KEY`, and
 variable `LOT_SLUG`.
 
+### Frontend build env
+
+The site reads exactly three public vars at build time (see the root
+`.env.example`). Set them in the hosting provider's build environment, then
+redeploy: Vite inlines them, so changing them needs a new build.
+
+| Variable | Value |
+|---|---|
+| `VITE_SUPABASE_URL` | `https://<project-ref>.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | project anon (public) key |
+| `VITE_RESERVATIONS_ENABLED` | `true` to turn the flow on; anything else shows "proximamente" |
+
+The origin the site is served from must be listed in `ALLOWED_ORIGINS`, or
+every function call fails CORS.
+
 ### Go-live checklist
 
+- [ ] Privacy policy (Ley 1581) and shipping terms published; the consent link in `OrderFormStep.jsx` points to it (today it is a dead `#politica-de-privacidad` anchor).
+- [ ] Run pgTAP locally (`supabase start`, `supabase db reset`, `supabase test db`) and one end-to-end receipt upload before enabling the flag.
 - [ ] Confirm the platform's client-IP header on the deployed function, then pin `CLIENT_IP_HEADER`.
 - [ ] Set `RATE_LIMIT_PER_HOUR`, `IP_HASH_SALT` (random), `ALLOWED_ORIGINS` (production origin only).
 - [ ] Service role key is injected by Supabase; never ship it to the client.
-- [ ] Real Nequi number, holder/QR and stock set via SQL (see above), never in git.
 - [ ] `supabase db push` and `supabase functions deploy` (get-lot, create-order, submit-receipt, telegram-webhook).
+- [ ] Lot row created with the upsert above (real Nequi number, holder/QR, price, stock), never in git; `get-lot` returns it.
 - [ ] Telegram bot, `OWNER_CHAT_ID`, webhook secret, `setWebhook` done; `getWebhookInfo` shows the URL and no `last_error_message`.
 - [ ] `OWNER_CHAT_ID` is the owner's personal user id (private chat with the bot), not a group id: taps are only accepted when both the tapping user and the chat match it.
 - [ ] `RESEND_FROM` on a verified domain if emailing anyone other than the Resend account owner.
 - [ ] GitHub keep-alive secrets/variable set; run the workflow once via `workflow_dispatch`. GitHub disables scheduled workflows after 60 days without repo activity, so re-enable it if that happens.
+- [ ] Last step: set the three `VITE_*` vars with `VITE_RESERVATIONS_ENABLED=true` in the host build env and redeploy the site.
 
 Known: if the client times out after the server already accepted a receipt, the
 owner may get a duplicate Telegram message. Harmless: the decision webhook is
