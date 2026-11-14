@@ -16,7 +16,7 @@ export function adminDisplayName(from) {
   return name || FALLBACK_NAME;
 }
 
-const stamp = (value) => {
+export const stamp = (value) => {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat('en-GB', {
       timeZone: 'America/Bogota',

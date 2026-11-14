@@ -264,3 +264,20 @@ describe('notifier', () => {
     });
   });
 });
+
+describe('buildSummary field truncation (W1)', () => {
+  it('keeps quantity and total when customer fields are huge, caption under 1024', async () => {
+    const { buildSummary } = await import('./format.js');
+    const text = buildSummary({
+      ref: 'CD-ABC234',
+      customer_name: 'N'.repeat(5000),
+      customer_phone: '3001234567',
+      customer_address: 'A'.repeat(5000),
+      qty: 3,
+      total_cop: 114000,
+    });
+    expect(text).toContain('Cantidad: 3');
+    expect(text).toContain('Total:');
+    expect(text.length).toBeLessThan(1024);
+  });
+});
