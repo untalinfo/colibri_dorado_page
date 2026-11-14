@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(15);
 
 -- Schema (S1): decision audit on orders and one alert copy per (order, admin chat)
 select has_column('public', 'orders', 'decided_by', 'orders.decided_by exists');
@@ -27,6 +27,9 @@ values ('00000000-0000-0000-0000-0000000000c1', 111, 7, true);
 select throws_ok(
   $$insert into order_admin_messages (order_id, chat_id, message_id, has_media) values ('00000000-0000-0000-0000-0000000000c1', 111, 8, false)$$,
   '23505', null, 'one row per (order, chat)');
+select throws_ok(
+  $$update orders set decided_by_name = repeat('x', 33) where id = '00000000-0000-0000-0000-0000000000c1'$$,
+  '23514', null, 'decided_by_name is limited to 32 chars');
 delete from orders where id = '00000000-0000-0000-0000-0000000000c1';
 select is((select count(*) from order_admin_messages), 0::bigint, 'alert copies cascade with the order');
 

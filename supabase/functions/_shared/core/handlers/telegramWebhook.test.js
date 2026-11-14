@@ -344,3 +344,106 @@ describe('telegramWebhook decisions', () => {
     expect((await post(callbackUpdate())).status).toBe(200);
   });
 });
+
+describe('telegramWebhook message router (S2)', () => {
+  const route = ({ adminIds = [OWNER], run } = {}) => {
+    const commands = { run: run ?? vi.fn().mockResolvedValue('respuesta') };
+    const db = { setDecision: vi.fn(), listAdminMessages: vi.fn() };
+    const telegram = { call: vi.fn().mockResolvedValue({}) };
+    const log = vi.fn();
+    const handler = createTelegramWebhookHandler({
+      db,
+      telegram,
+      commands,
+      config: { webhookSecret: SECRET, adminIds },
+      log,
+      now: () => NOW,
+    });
+    const send = (message, updateId = 77) =>
+      handler(
+        new Request('https://fn.example/telegram-webhook', {
+          method: 'POST',
+          headers: { 'x-telegram-bot-api-secret-token': SECRET },
+          body: JSON.stringify({ update_id: updateId, message }),
+        }),
+      );
+    return { commands, db, telegram, log, send };
+  };
+  const adminMsg = (text, id = Number(OWNER)) => ({
+    message_id: 1,
+    from: { id, first_name: 'Carlos' },
+    chat: { id, type: 'private' },
+    text,
+  });
+
+  it('ignores non-admins with an empty 200, no outbound call, no DB (S1.1)', async () => {
+    const { send, telegram, commands, db } = route();
+    const res = await send(adminMsg('/lotes', 999));
+    expect(res.status).toBe(200);
+    expect(telegram.call).not.toHaveBeenCalled();
+    expect(commands.run).not.toHaveBeenCalled();
+    expect(db.setDecision).not.toHaveBeenCalled();
+  });
+
+  it('ignores an admin writing in a group (S1.2)', async () => {
+    const { send, telegram, commands } = route();
+    const msg = { ...adminMsg('/lotes'), chat: { id: -100, type: 'group' } };
+    expect((await send(msg)).status).toBe(200);
+    expect(telegram.call).not.toHaveBeenCalled();
+    expect(commands.run).not.toHaveBeenCalled();
+  });
+
+  it('with no admins configured: no outbound, config error logged, 200 (S1.6)', async () => {
+    const { send, telegram, log } = route({ adminIds: [] });
+    expect((await send(adminMsg('/lotes'))).status).toBe(200);
+    expect(telegram.call).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith('admin_config_empty', {});
+  });
+
+  it('runs the parsed command and replies in plain text without parse_mode', async () => {
+    const { send, telegram, commands } = route();
+    await send(adminMsg('/PEDIDO@bot cd-abc234'), 55);
+    expect(commands.run).toHaveBeenCalledWith(
+      { name: 'pedido', args: { ref: 'CD-ABC234' } },
+      { adminId: OWNER, updateId: 55 },
+    );
+    expect(telegram.call).toHaveBeenCalledTimes(1);
+    const [method, payload] = telegram.call.mock.calls[0];
+    expect(method).toBe('sendMessage');
+    expect(payload).toEqual({ chat_id: OWNER, text: 'respuesta' });
+  });
+
+  it('sends long output as sequential chunks, each under 4096', async () => {
+    const long = Array.from({ length: 40 }, () => 'x'.repeat(249)).join('\n');
+    const { send, telegram } = route({ run: vi.fn().mockResolvedValue(long) });
+    await send(adminMsg('/lotes'));
+    const texts = telegram.call.mock.calls.map(([, p]) => p.text);
+    expect(texts.length).toBeGreaterThanOrEqual(2);
+    for (const t of texts) expect(t.length).toBeLessThan(4096);
+  });
+
+  it('answers 200 with a generic reply when the command fails (R1.17)', async () => {
+    const { send, telegram, log } = route({ run: vi.fn().mockRejectedValue(new Error('db down')) });
+    const res = await send(adminMsg('/lotes'));
+    expect(res.status).toBe(200);
+    expect(telegram.call.mock.calls[0][1].text).toContain('reintenta');
+    expect(JSON.stringify(log.mock.calls)).not.toContain('db down');
+  });
+
+  it('still answers 200 when sending fails', async () => {
+    const { send, telegram } = route();
+    telegram.call.mockRejectedValue(new Error('blocked'));
+    expect((await send(adminMsg('/lotes'))).status).toBe(200);
+  });
+
+  it('ignores updates that carry neither callback nor text message', async () => {
+    const { send, telegram } = route();
+    const msg = {
+      message_id: 1,
+      from: { id: Number(OWNER) },
+      chat: { id: Number(OWNER), type: 'private' },
+    };
+    expect((await send(msg)).status).toBe(200);
+    expect(telegram.call).not.toHaveBeenCalled();
+  });
+});

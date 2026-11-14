@@ -77,7 +77,7 @@ curl -sS "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
   -d '{
     "url": "https://<project-ref>.supabase.co/functions/v1/telegram-webhook",
     "secret_token": "<TELEGRAM_WEBHOOK_SECRET>",
-    "allowed_updates": ["callback_query"]
+    "allowed_updates": ["message", "callback_query"]
   }'
 ```
 
@@ -132,3 +132,37 @@ Each admin gets the alert; a decision edits every admin's copy ("Confirmado por
 
 Rollback: redeploy the previous functions, then run the S1 section of
 `supabase/rollback/admin_bot.down.sql` (sections are run in reverse, S4 to S1).
+
+## Telegram admin bot: S2 (read commands)
+
+Deploy order: apply migration `20261114000002_admin_bot_s2.sql`, give the live lot its
+command code, deploy `telegram-webhook`, then re-run `setWebhook` (above) so
+`allowed_updates` includes `message`.
+
+```sql
+update lots set code = 'm500' where slug = 'miel-colibri-500g';
+```
+
+Commands: `/ayuda`, `/lotes`, `/pendientes`, `/pedido <ref>`. They work only from an
+admin's own private chat; anyone else gets no reply. `/lotes` lists only lots that
+have a code. Register the menu per admin and clear the default one:
+
+```sh
+curl -sS "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setMyCommands" \
+  -H 'content-type: application/json' \
+  -d '{
+    "scope": {"type": "chat", "chat_id": <ADMIN_CHAT_ID>},
+    "commands": [
+      {"command": "ayuda", "description": "Lista de comandos"},
+      {"command": "lotes", "description": "Lotes y disponibilidad"},
+      {"command": "pendientes", "description": "Pedidos por verificar"},
+      {"command": "pedido", "description": "Ver un pedido: /pedido CD-XXXXXX"}
+    ]
+  }'
+curl -sS "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/deleteMyCommands" \
+  -H 'content-type: application/json' -d '{"scope": {"type": "default"}}'
+```
+
+Rollback: redeploy the previous functions, `setWebhook` with
+`"allowed_updates": ["callback_query"]`, `deleteMyCommands` per admin, then run the S2
+section of `supabase/rollback/admin_bot.down.sql`.

@@ -1,5 +1,7 @@
-import { isAdminCallback } from '../admin/admins.js';
+import { isAdminCallback, isAdminMessage } from '../admin/admins.js';
 import { adminDisplayName, syncDecision } from '../admin/alerts.js';
+import { chunk } from '../admin/format.js';
+import { parseCommand } from '../admin/parse.js';
 import { errorResponse, jsonResponse } from '../http.js';
 
 const DATA = /^(c|r):(CD-[A-Z0-9]{6})$/;
@@ -25,6 +27,7 @@ const ok = () => jsonResponse({ ok: true }, 200);
 export function createTelegramWebhookHandler({
   db,
   telegram,
+  commands,
   config,
   log = () => {},
   now = () => new Date(),
@@ -47,6 +50,21 @@ export function createTelegramWebhookHandler({
     const sameChat = (r) => String(r.chat_id) === String(tapped.chat_id);
     return [tapped, ...rows.filter((r) => !sameChat(r))];
   };
+  // Commands come only from admins in their own private chat; everyone else gets silence.
+  const handleMessage = async (message, updateId) => {
+    const adminIds = config.adminIds ?? [];
+    if (adminIds.length === 0) log('admin_config_empty', {});
+    if (!isAdminMessage(message, adminIds) || typeof message.text !== 'string') return;
+    const chatId = String(message.chat.id);
+    let text;
+    try {
+      text = await commands.run(parseCommand(message.text), { adminId: chatId, updateId });
+    } catch (err) {
+      log('admin_command_failed', { error: err?.name ?? 'Error' });
+      text = 'No se pudo completar, reintenta.';
+    }
+    for (const part of chunk(text)) await safeCall('sendMessage', { chat_id: chatId, text: part });
+  };
   const answer = (id, text) => safeCall('answerCallbackQuery', { callback_query_id: id, text });
 
   return async (req) => {
@@ -64,7 +82,10 @@ export function createTelegramWebhookHandler({
       return ok();
     }
     const query = update?.callback_query;
-    if (!query?.id) return ok();
+    if (!query?.id) {
+      if (update?.message) await handleMessage(update.message, update.update_id);
+      return ok();
+    }
 
     let ref;
     try {
