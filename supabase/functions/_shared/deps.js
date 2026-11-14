@@ -1,6 +1,7 @@
 // Deno-side wiring: real dependencies from env. Not unit-tested (I/O only); covered by the smoke run.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { parseAdminIds } from './core/admin/admins.js';
+import { changeLotResult, summaryRows } from './core/admin/lotChange.js';
 import { adjustStockResult } from './core/admin/stock.js';
 import { resolveClientIp as defaultResolveClientIp } from './core/clientIp.js';
 import { createEmailChannel } from './core/notify/email.js';
@@ -227,6 +228,20 @@ export function buildDeps() {
           p_update_id: updateId,
         }),
       );
+    },
+    async changeLot({ code, kind, value, adminId, updateId }) {
+      return changeLotResult(
+        await supabase.rpc('change_lot', {
+          p_code: code,
+          p_kind: kind,
+          p_value: value,
+          p_admin_id: adminId,
+          p_update_id: updateId,
+        }),
+      );
+    },
+    async orderSummary(days) {
+      return summaryRows(await supabase.rpc('order_summary', { p_days: days }));
     },
     async saveAdminMessages(orderId, rows) {
       if (rows.length === 0) return;
