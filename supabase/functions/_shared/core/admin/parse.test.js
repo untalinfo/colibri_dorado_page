@@ -52,3 +52,48 @@ describe('field helpers (used by later slices)', () => {
     expect(cleanReason([])).toBe('');
   });
 });
+
+describe('stock commands', () => {
+  it('/agregar takes a lot code and a positive integer up to the limit', () => {
+    expect(parseCommand('/agregar M500 24')).toEqual({
+      name: 'agregar',
+      args: { code: 'm500', delta: 24, reason: '' },
+    });
+    expect(parseCommand('/agregar m500 10000').args.delta).toBe(10000);
+    for (const bad of [
+      '/agregar',
+      '/agregar m500',
+      '/agregar m500 -5',
+      '/agregar m500 +5',
+      '/agregar m500 0',
+      '/agregar m500 10001',
+      '/agregar m500 2.5',
+      '/agregar m500 5 extra',
+      '/agregar ! 5',
+    ]) {
+      expect(parseCommand(bad)).toEqual({ name: 'agregar', usage: '/agregar <código> <n>' });
+    }
+  });
+
+  it('/corregir takes a signed non-zero integer and an optional reason', () => {
+    expect(parseCommand('/corregir m500 -15 se  rompió\ncaja').args).toEqual({
+      code: 'm500',
+      delta: -15,
+      reason: 'se rompió caja',
+    });
+    expect(parseCommand('/corregir m500 +3').args).toEqual({ code: 'm500', delta: 3, reason: '' });
+    for (const bad of [
+      '/corregir m500',
+      '/corregir m500 0',
+      '/corregir m500 10001',
+      '/corregir m500 -10001',
+      '/corregir m500 abc',
+      `/corregir m500 5 ${'x'.repeat(201)}`,
+    ]) {
+      expect(parseCommand(bad)).toEqual({
+        name: 'corregir',
+        usage: '/corregir <código> <±n> [motivo]',
+      });
+    }
+  });
+});

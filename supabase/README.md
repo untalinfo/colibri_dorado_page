@@ -166,3 +166,26 @@ curl -sS "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/deleteMyCommands" \
 Rollback: redeploy the previous functions, `setWebhook` with
 `"allowed_updates": ["callback_query"]`, `deleteMyCommands` per admin, then run the S2
 section of `supabase/rollback/admin_bot.down.sql`.
+
+## Telegram admin bot: S3 (stock adjustments)
+
+Deploy order: apply migration `20261114000003_admin_bot_s3.sql`, then deploy
+`telegram-webhook`.
+
+Commands (admin private chat only, plain-text replies, every change is audited and
+idempotent per Telegram update):
+
+- `/agregar <código> <n>`: add `n` units (1 to 10000), e.g. `/agregar m500 24`.
+- `/corregir <código> <±n> [motivo]`: signed correction, e.g. `/corregir m500 -2 se rompió`.
+  A reduction below the units held by open orders is rejected and the reply states the
+  maximum allowed reduction.
+
+Add both to the per-admin menu by appending these entries to the `setMyCommands` list above:
+
+```json
+{"command": "agregar", "description": "Sumar stock: /agregar m500 24"},
+{"command": "corregir", "description": "Corregir stock: /corregir m500 -2 motivo"}
+```
+
+Rollback: redeploy the previous functions, re-run `setMyCommands` without the two entries,
+then run the S3 section of `supabase/rollback/admin_bot.down.sql`.

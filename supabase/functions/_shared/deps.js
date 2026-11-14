@@ -1,6 +1,7 @@
 // Deno-side wiring: real dependencies from env. Not unit-tested (I/O only); covered by the smoke run.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { parseAdminIds } from './core/admin/admins.js';
+import { adjustStockResult } from './core/admin/stock.js';
 import { resolveClientIp as defaultResolveClientIp } from './core/clientIp.js';
 import { createEmailChannel } from './core/notify/email.js';
 import { createNotifier } from './core/notify/notifier.js';
@@ -213,6 +214,18 @@ export function buildDeps() {
     async getOrder(ref) {
       return must(
         await supabase.from('orders').select(ORDER_VIEW_COLUMNS).eq('ref', ref).maybeSingle(),
+      );
+    },
+    async adjustStock({ code, delta, kind, reason, adminId, updateId }) {
+      return adjustStockResult(
+        await supabase.rpc('adjust_stock', {
+          p_code: code,
+          p_delta: delta,
+          p_kind: kind,
+          p_reason: reason,
+          p_admin_id: adminId,
+          p_update_id: updateId,
+        }),
       );
     },
     async saveAdminMessages(orderId, rows) {

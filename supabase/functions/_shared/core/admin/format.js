@@ -34,6 +34,22 @@ export { truncate };
 
 export const formatHelp = () => `Comandos:\n${USAGE.join('\n')}`;
 
+// result: db.adjustStock outcome, either a typed error or { stock, available, replayed }.
+export function formatAdjustment({ code, delta }, result) {
+  switch (result.error) {
+    case undefined:
+      break;
+    case 'LOT_NOT_FOUND':
+      return 'Lote no encontrado. Usa /lotes para ver los códigos.';
+    case 'BELOW_HELD':
+      return `No se puede: hay unidades reservadas en pedidos. Reducción máxima: -${result.available}`;
+    default:
+      return 'No se pudo aplicar, reintenta.';
+  }
+  const line = `Stock ${code}: ${result.stock - delta} → ${result.stock} (disponibles ${result.available})`;
+  return result.replayed ? `Ya aplicado antes. ${line}` : line;
+}
+
 export function formatLots(rows) {
   if (rows.length === 0) return 'Sin lotes';
   const lines = rows
