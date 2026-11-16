@@ -71,8 +71,12 @@ export default function OriginSection() {
               className="relative z-10 rounded-2xl overflow-hidden shadow-xl"
             >
               <img
-                src="/assets/apicultor-forest.jpg" // Placeholder
+                src="/assets/apicultor-forest.webp"
                 alt="Apicultor en el bosque"
+                width={1200}
+                height={896}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             </motion.div>

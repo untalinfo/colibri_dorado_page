@@ -92,6 +92,35 @@ function useBeeFlightPlayback({ videoRef, takeoffProgress, introStartedRef, disa
   }, [videoRef, takeoffProgress, introStartedRef, disabled]);
 }
 
+// The 2.6 MB clip sits one viewport below the hero, so a scroll-based trigger would fire
+// on load anyway. Start it on the first user interaction, or after a short idle delay,
+// so it never competes with the hero for bandwidth.
+const DEFERRED_LOAD_MS = 2500;
+const INTERACTION_EVENTS = ['scroll', 'pointerdown', 'touchstart', 'keydown'];
+
+function useDeferredVideoLoad(videoRef) {
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+
+    let timer;
+    const cleanup = () => {
+      clearTimeout(timer);
+      for (const name of INTERACTION_EVENTS) window.removeEventListener(name, start);
+    };
+    function start() {
+      cleanup();
+      video.preload = 'auto';
+      video.load();
+    }
+    for (const name of INTERACTION_EVENTS) {
+      window.addEventListener(name, start, { once: true, passive: true });
+    }
+    timer = setTimeout(start, DEFERRED_LOAD_MS);
+    return cleanup;
+  }, [videoRef]);
+}
+
 export default function TransitionBridge() {
   const sectionRef = useRef(null);
   const videoRef = useRef(null);
@@ -122,6 +151,8 @@ export default function TransitionBridge() {
     }
   });
 
+  useDeferredVideoLoad(videoRef);
+
   useBeeFlightPlayback({
     videoRef,
     takeoffProgress,
@@ -150,7 +181,8 @@ export default function TransitionBridge() {
           src={VIDEO_SRC}
           muted
           playsInline
-          preload="auto"
+          preload="none"
+          aria-hidden="true"
           className="absolute inset-x-0 bottom-0 h-[58%] w-full object-cover object-[80%_center] lg:landscape:inset-0 lg:landscape:object-[72%_center] lg:landscape:h-full"
         />
 

@@ -3,10 +3,11 @@ import { ArrowRight, Bell } from 'lucide-react';
 import SeamlessVideoBackground from '../../../../shared/components/SeamlessVideoBackground';
 import { useLot } from '../../../orders/presentation/hooks/useLot';
 
+// Entrance is slide-only: hero copy must be visible on the first (prerendered) paint,
+// otherwise LCP waits for JS to hydrate and fade it in.
 const containerVariants = {
-  hidden: { opacity: 0 },
+  hidden: {},
   visible: {
-    opacity: 1,
     transition: {
       staggerChildren: 0.2,
       delayChildren: 0.3,
@@ -15,9 +16,8 @@ const containerVariants = {
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { y: 20 },
   visible: {
-    opacity: 1,
     y: 0,
     transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
   },

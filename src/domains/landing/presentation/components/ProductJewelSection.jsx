@@ -15,8 +15,12 @@ export default function ProductJewelSection() {
           className="relative"
         >
           <img
-            src="/assets/honey-bottle-luxury.jpg" // Placeholder
+            src="/assets/honey-bottle-luxury.webp"
             alt="Frasco de miel 100% pura Colibrí Dorado"
+            width={900}
+            height={1206}
+            loading="lazy"
+            decoding="async"
             className="relative z-10 w-full h-auto rounded-2xl shadow-2xl"
           />
         </motion.div>
