@@ -15,7 +15,7 @@ export default function ManifestoSection() {
         >
           <img
             src="/assets/honey-macro.jpg" // Placeholder for high-res macro
-            alt="Miel pura detalle"
+            alt="Detalle de miel pura sin procesar"
             className="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-1000"
           />
           <div className="absolute inset-0 ring-1 ring-inset ring-black/5" />
@@ -52,10 +52,10 @@ export default function ManifestoSection() {
             className="space-y-6 text-lg text-sand-500 font-sans leading-relaxed max-w-xl"
           >
             <p>
-              Nuestra miel no es un producto industrial; es el resultado de un diálogo respetuoso entre las abejas y los bosques subandinos de la zona cafetera.
+              Nuestra miel pura y orgánica no es un producto industrial; es el resultado de un diálogo respetuoso entre las abejas y los bosques subandinos de la zona cafetera.
             </p>
             <p>
-              Sin filtrar, sin pasteurizar y sin procesos térmicos. Preservamos cada enzima, cada aroma y cada propiedad botánica original, entregando la miel exactamente como la naturaleza la diseñó en el corazón del Cauca.
+              Es miel sin procesar: sin filtrar, sin pasteurizar y sin procesos térmicos. Preservamos cada enzima, cada aroma y cada propiedad botánica original, entregando la miel exactamente como la naturaleza la diseñó en el corazón del Cauca.
             </p>
           </motion.div>
 
