@@ -52,7 +52,7 @@ export default function ManifestoSection() {
             className="space-y-6 text-lg text-sand-500 font-sans leading-relaxed max-w-xl"
           >
             <p>
-              Nuestra miel pura y orgánica no es un producto industrial; es el resultado de un diálogo respetuoso entre las abejas y los bosques subandinos de la zona cafetera.
+              Nuestra miel pura no es un producto industrial; es el resultado de un diálogo respetuoso entre las abejas y los bosques subandinos de la zona cafetera.
             </p>
             <p>
               Es miel sin procesar: sin filtrar, sin pasteurizar y sin procesos térmicos. Preservamos cada enzima, cada aroma y cada propiedad botánica original, entregando la miel exactamente como la naturaleza la diseñó en el corazón del Cauca.
