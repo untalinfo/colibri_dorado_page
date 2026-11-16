@@ -1,9 +1,10 @@
+import ClosingSection from '../components/ClosingSection';
 import Hero from '../components/Hero';
-import TransitionBridge from '../components/TransitionBridge';
 import ManifestoSection from '../components/ManifestoSection';
 import OriginSection from '../components/OriginSection';
 import ProductJewelSection from '../components/ProductJewelSection';
-import ClosingSection from '../components/ClosingSection';
+import ProductStructuredData from '../components/ProductStructuredData';
+import TransitionBridge from '../components/TransitionBridge';
 
 export default function LandingPage({ onOpenNotify, onOpenOrder }) {
   return (
@@ -14,9 +15,7 @@ export default function LandingPage({ onOpenNotify, onOpenOrder }) {
       <OriginSection />
       <ProductJewelSection />
       <ClosingSection onOpenOrder={onOpenOrder} />
+      <ProductStructuredData />
     </main>
   );
 }
-
-
-
