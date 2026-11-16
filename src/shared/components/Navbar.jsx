@@ -21,9 +21,14 @@ export default function Navbar({ onOpenNotify, onOpenOrder }) {
           onClick={closeMenu}
           className="flex shrink-0 items-center gap-2.5 sm:gap-3.5 group"
         >
-          <div className="w-9 h-9 rounded-full bg-honey-700/30 border border-honey-500/30 flex items-center justify-center text-honey-400 group-hover:border-honey-400 transition-colors">
-            <span className="text-base font-serif font-semibold text-honey-300">C</span>
-          </div>
+          <img
+            src="/brand/colibri-icon.svg"
+            alt=""
+            aria-hidden="true"
+            width="40"
+            height="40"
+            className="w-9 h-9 sm:w-10 sm:h-10 object-contain transition-transform group-hover:-translate-y-0.5"
+          />
           <div className="flex flex-col">
             <span className="whitespace-nowrap text-base font-serif font-semibold tracking-wide text-sand-50 group-hover:text-honey-300 transition-colors">
               Colibrí <span className="italic font-normal text-honey-300">Dorado</span>
