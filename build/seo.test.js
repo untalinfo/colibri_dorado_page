@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { buildBusinessJsonLd, buildHeadTags, buildRobots, buildSitemap, normalizeSiteUrl } from './seo.js';
+import {
+  buildBusinessJsonLd,
+  buildLlmsTxt, buildHeadTags, buildRobots, buildSitemap, normalizeSiteUrl } from './seo.js';
 
 describe('normalizeSiteUrl', () => {
   it('returns null when unset', () => {
@@ -41,5 +43,17 @@ describe('head tags', () => {
     expect(tags).toContainEqual(
       expect.objectContaining({ attrs: { property: 'og:image', content: 'https://miel.co/og-image.jpg' } }),
     );
+  });
+});
+
+describe('llms.txt', () => {
+  it('starts with an H1 and links every page', () => {
+    const txt = buildLlmsTxt('https://miel.co');
+    expect(txt.startsWith('# Colibrí Dorado')).toBe(true);
+    expect(txt).toContain('(https://miel.co/)');
+    expect(txt).toContain('(https://miel.co/politica-de-privacidad.html)');
+  });
+  it('uses root-relative links without a site URL', () => {
+    expect(buildLlmsTxt(null)).toContain('(/politica-de-privacidad.html)');
   });
 });
