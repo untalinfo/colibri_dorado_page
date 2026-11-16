@@ -16,7 +16,7 @@ export default function ProductJewelSection() {
         >
           <img
             src="/assets/honey-bottle-luxury.jpg" // Placeholder
-            alt="Frasco de Miel Colibrí Dorado"
+            alt="Frasco de miel 100% pura Colibrí Dorado"
             className="relative z-10 w-full h-auto rounded-2xl shadow-2xl"
           />
         </motion.div>

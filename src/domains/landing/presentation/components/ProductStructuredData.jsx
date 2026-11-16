@@ -11,7 +11,7 @@ export function buildProductJsonLd(lot, origin) {
     '@type': 'Product',
     name: lot.name || 'Miel Colibrí Dorado',
     description:
-      'Miel cruda de bosque andino, cosechada a mano en la Finca Los Colibríes, Piendamó, Cauca.',
+      'Miel 100% pura y cruda, sin procesar, cosechada a mano en la Finca Los Colibríes, Piendamó, Cauca.',
     image: `${origin}${PRODUCT_IMAGE}`,
     sku: lot.slug,
     brand: { '@type': 'Brand', name: 'Colibrí Dorado' },

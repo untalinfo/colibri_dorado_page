@@ -62,7 +62,7 @@ export default function Hero({ onOpenNotify, onOpenOrder }) {
           variants={itemVariants}
           className="text-xl sm:text-2xl md:text-3xl font-serif text-honey-300 mb-4 tracking-normal max-w-2xl font-light"
         >
-          Miel cruda de bosque andino. Cosecha limitada.
+          Miel 100% pura de bosque andino. Cosecha limitada.
         </motion.p>
 
         {/* Provenance Origin Note */}
@@ -78,8 +78,8 @@ export default function Hero({ onOpenNotify, onOpenOrder }) {
           variants={itemVariants}
           className="text-base sm:text-lg text-sand-300 max-w-xl font-normal leading-relaxed mb-12 font-sans"
         >
-          Cosechada a mano en el corazón de la zona cafetera caucana. Sin someter a calor ni
-          procesos industriales, preservando viva la esencia botánica de los bosques subandinos.
+          Miel sin procesar, cosechada a mano en el corazón de la zona cafetera caucana. Sin someter a
+          calor ni procesos industriales, preservando viva la esencia botánica de los bosques subandinos.
         </motion.p>
 
         {/* Actions */}

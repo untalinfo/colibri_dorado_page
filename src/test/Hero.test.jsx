@@ -7,7 +7,7 @@ describe('Hero Component', () => {
     render(<Hero onOpenNotify={vi.fn()} onOpenOrder={vi.fn()} />);
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Colibrí Dorado');
-    expect(screen.getByText('Miel cruda de bosque andino. Cosecha limitada.')).toBeInTheDocument();
+    expect(screen.getByText('Miel 100% pura de bosque andino. Cosecha limitada.')).toBeInTheDocument();
     expect(screen.getByText(/Finca Los Colibríes • Santa Elena, Piendamó/i)).toBeInTheDocument();
   });
 

@@ -5,7 +5,7 @@
 export const SITE = {
   name: 'Colibrí Dorado',
   description:
-    'Miel 100% pura y orgánica cosechada a mano en la Finca Los Colibríes, Vereda Santa Elena, Piendamó, Cauca. Lotes exclusivos de floración andina.',
+    'Miel 100% pura y cruda, sin procesar, cosechada a mano en la Finca Los Colibríes, Vereda Santa Elena, Piendamó, Cauca. Lotes limitados de floración andina.',
   ogImage: '/og-image.jpg',
   ogImageAlt: 'Frasco de miel Colibrí Dorado con un colibrí dorado en relieve',
   logo: '/apple-touch-icon.png',
