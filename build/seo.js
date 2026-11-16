@@ -99,6 +99,8 @@ export function seoPlugin(rawSiteUrl) {
   const siteUrl = normalizeSiteUrl(rawSiteUrl);
   return {
     name: 'colibri-seo',
+    // The SSR pass (prerender) only produces a render function; assets belong to the client build.
+    apply: (_config, env) => !env.isSsrBuild,
     transformIndexHtml: () => buildHeadTags(siteUrl),
     generateBundle() {
       this.emitFile({ type: 'asset', fileName: 'robots.txt', source: buildRobots(siteUrl) });
