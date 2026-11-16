@@ -1,3 +1,4 @@
+import { WHATSAPP_DISPLAY, whatsappUrl } from '../../../../shared/lib/contact';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 
@@ -38,9 +39,17 @@ export default function ClosingSection({ onOpenOrder }) {
           Colibrí Dorado
         </div>
         <div className="flex gap-8">
-          <a href="#" className="hover:text-honey-300 transition-colors">Origen</a>
-          <a href="#" className="hover:text-honey-300 transition-colors">Pureza</a>
-          <a href="#" className="hover:text-honey-300 transition-colors">Contacto</a>
+          <a href="#origen" className="hover:text-honey-300 transition-colors">Origen</a>
+          <a href="#proceso" className="hover:text-honey-300 transition-colors">Pureza</a>
+          <a
+            href={whatsappUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Contacto por WhatsApp al ${WHATSAPP_DISPLAY}`}
+            className="hover:text-honey-300 transition-colors"
+          >
+            Contacto
+          </a>
           <a href="/politica-de-privacidad.html" className="hover:text-honey-300 transition-colors">Privacidad</a>
         </div>
         <div className="text-center sm:text-right">

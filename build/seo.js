@@ -1,3 +1,5 @@
+import { WHATSAPP_DISPLAY, WHATSAPP_NUMBER } from '../src/shared/lib/contact.js';
+
 // Build-time SEO: everything that needs the absolute site URL (canonical, og:image,
 // sitemap) is derived from VITE_SITE_URL. Without it the build still works, but skips
 // URL-dependent output instead of shipping broken placeholders.
@@ -54,6 +56,8 @@ export function buildLlmsTxt(siteUrl) {
     '',
     'Miel 100% pura y cruda, sin procesar: sin pasteurizar ni filtrar en caliente. Producción artesanal en lotes limitados desde la Finca Los Colibríes, Vereda Santa Elena, Piendamó, Cauca, Colombia (1.750 msnm). Envíos dentro de Colombia.',
     '',
+    `Contacto: WhatsApp ${WHATSAPP_DISPLAY} (https://wa.me/${WHATSAPP_NUMBER}).`,
+    '',
     '## Páginas',
     '',
     `- [Inicio](${link('/')}): origen, proceso de cosecha, producto y reserva del lote actual.`,
@@ -77,6 +81,13 @@ export function buildBusinessJsonLd(siteUrl) {
     },
     areaServed: { '@type': 'Country', name: 'Colombia' },
     currenciesAccepted: 'COP',
+    telephone: `+${WHATSAPP_NUMBER}`,
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: 'customer service',
+      telephone: `+${WHATSAPP_NUMBER}`,
+      availableLanguage: 'es',
+    },
   };
   if (siteUrl) {
     Object.assign(data, {

@@ -57,3 +57,10 @@ describe('llms.txt', () => {
     expect(buildLlmsTxt(null)).toContain('(/politica-de-privacidad.html)');
   });
 });
+
+describe('contact', () => {
+  it('exposes the WhatsApp number in JSON-LD and llms.txt', () => {
+    expect(buildBusinessJsonLd(null)).toMatchObject({ telephone: '+573108233269' });
+    expect(buildLlmsTxt(null)).toContain('https://wa.me/573108233269');
+  });
+});
