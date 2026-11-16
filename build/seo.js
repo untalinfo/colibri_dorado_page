@@ -43,6 +43,25 @@ export function buildSitemap(siteUrl, lastmod) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
+// llms.txt (llmstxt.org): Markdown index for AI crawlers. Speculative, but cheap.
+// Links are absolute with a site URL and root-relative otherwise.
+export function buildLlmsTxt(siteUrl) {
+  const link = (path) => (siteUrl ? absolute(siteUrl, path) : path);
+  return [
+    `# ${SITE.name}`,
+    '',
+    `> ${SITE.description}`,
+    '',
+    'Miel 100% pura y cruda, sin procesar: sin pasteurizar ni filtrar en caliente. Producción artesanal en lotes limitados desde la Finca Los Colibríes, Vereda Santa Elena, Piendamó, Cauca, Colombia (1.750 msnm). Envíos dentro de Colombia.',
+    '',
+    '## Páginas',
+    '',
+    `- [Inicio](${link('/')}): origen, proceso de cosecha, producto y reserva del lote actual.`,
+    `- [Política de tratamiento de datos](${link('/politica-de-privacidad.html')}): tratamiento de datos personales según la Ley 1581 de 2012.`,
+    '',
+  ].join('\n');
+}
+
 export function buildBusinessJsonLd(siteUrl) {
   const data = {
     '@context': 'https://schema.org',
@@ -104,6 +123,7 @@ export function seoPlugin(rawSiteUrl) {
     transformIndexHtml: () => buildHeadTags(siteUrl),
     generateBundle() {
       this.emitFile({ type: 'asset', fileName: 'robots.txt', source: buildRobots(siteUrl) });
+      this.emitFile({ type: 'asset', fileName: 'llms.txt', source: buildLlmsTxt(siteUrl) });
       if (!siteUrl) {
         this.warn('VITE_SITE_URL is not set: skipping sitemap.xml, canonical and og:image.');
         return;

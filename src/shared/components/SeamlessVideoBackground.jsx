@@ -92,6 +92,7 @@ export default function SeamlessVideoBackground({
         muted
         playsInline
         preload="auto"
+        aria-hidden="true"
         className={`absolute inset-0 w-full h-full object-cover mix-blend-luminosity filter contrast-125 transition-opacity duration-1000 ease-in-out pointer-events-none ${
           activeVideo === 'A' ? 'opacity-35' : 'opacity-0'
         }`}
@@ -102,6 +103,7 @@ export default function SeamlessVideoBackground({
         muted
         playsInline
         preload="auto"
+        aria-hidden="true"
         className={`absolute inset-0 w-full h-full object-cover mix-blend-luminosity filter contrast-125 transition-opacity duration-1000 ease-in-out pointer-events-none ${
           activeVideo === 'B' ? 'opacity-35' : 'opacity-0'
         }`}

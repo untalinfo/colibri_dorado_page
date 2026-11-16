@@ -14,8 +14,12 @@ export default function ManifestoSection() {
           className="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-2xl"
         >
           <img
-            src="/assets/honey-macro.jpg" // Placeholder for high-res macro
+            src="/assets/honey-macro.webp"
             alt="Detalle de miel pura sin procesar"
+            width={900}
+            height={1206}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover scale-105 hover:scale-100 transition-transform duration-1000"
           />
           <div className="absolute inset-0 ring-1 ring-inset ring-black/5" />
